@@ -1,5 +1,26 @@
 import { defineCommand } from "citty";
-import { loadConfig, saveConfig, parseSource, ensureRepo, getRepoPath, detectFormat, discoverArtifacts } from "@agpm/core";
+import {
+  loadConfig,
+  saveConfig,
+  parseSourceString,
+  ensureRepo,
+  getRepoPath,
+  detectFormat,
+  discoverArtifacts,
+  type Source,
+} from "@agpm/core";
+
+/**
+ * Find a source in the config by name (exact match or partial).
+ */
+function findSource(sources: Source[], query: string): Source | undefined {
+  // Try exact name match first
+  const exact = sources.find((s) => s.name === query);
+  if (exact) return exact;
+
+  // Try partial match
+  return sources.find((s) => s.name.includes(query) || s.url.includes(query));
+}
 
 const addCommand = defineCommand({
   meta: {
@@ -17,26 +38,26 @@ const addCommand = defineCommand({
     const cwd = process.cwd();
     const config = await loadConfig(cwd);
 
-    // Parse and validate the source
-    const parsed = parseSource(args.source);
-    console.log(`Adding source: ${parsed.original}`);
+    // Parse CLI shorthand into a Source object
+    const source = parseSourceString(args.source);
+    console.log(`Adding source: ${source.name}`);
 
     // Check if already added
-    if (config.sources.includes(args.source)) {
+    if (findSource(config.sources, source.name)) {
       console.log("Source already exists in config");
       return;
     }
 
     // Clone/fetch the repo to validate it exists
-    console.log(`Fetching ${parsed.url}...`);
-    const repo = await ensureRepo(parsed);
+    console.log(`Fetching ${source.url}...`);
+    const repo = await ensureRepo(source);
     console.log(`Cloned to ${repo.path} (${repo.sha.slice(0, 8)})`);
 
-    // Add to config
-    config.sources.push(args.source);
+    // Add to config (as full object)
+    config.sources.push(source);
     await saveConfig(cwd, config);
 
-    console.log(`Added source: ${args.source}`);
+    console.log(`Added source: ${source.name}`);
   },
 });
 
@@ -57,10 +78,13 @@ const listCommand = defineCommand({
 
     console.log("Configured sources:\n");
     for (const source of config.sources) {
-      const parsed = parseSource(source);
-      console.log(`  ${source}`);
-      if (parsed.subpath) {
-        console.log(`    └─ subpath: ${parsed.subpath}`);
+      console.log(`  ${source.name}`);
+      console.log(`    url: ${source.url}`);
+      if (source.format && source.format !== "auto") {
+        console.log(`    format: ${source.format}`);
+      }
+      if (source.subdir) {
+        console.log(`    subdir: ${source.subdir}`);
       }
     }
   },
@@ -74,7 +98,7 @@ const removeCommand = defineCommand({
   args: {
     source: {
       type: "positional",
-      description: "Source to remove",
+      description: "Source name to remove",
       required: true,
     },
   },
@@ -82,16 +106,16 @@ const removeCommand = defineCommand({
     const cwd = process.cwd();
     const config = await loadConfig(cwd);
 
-    const index = config.sources.indexOf(args.source);
+    const index = config.sources.findIndex((s) => s.name === args.source);
     if (index === -1) {
       console.log(`Source not found: ${args.source}`);
       return;
     }
 
-    config.sources.splice(index, 1);
+    const removed = config.sources.splice(index, 1)[0];
     await saveConfig(cwd, config);
 
-    console.log(`Removed source: ${args.source}`);
+    console.log(`Removed source: ${removed.name}`);
   },
 });
 
@@ -108,12 +132,20 @@ const discoverCommand = defineCommand({
     },
   },
   async run({ args }) {
-    const parsed = parseSource(args.source);
-    const repoPath = getRepoPath(parsed);
+    const cwd = process.cwd();
+    const config = await loadConfig(cwd);
+
+    // Check if source is in config, otherwise parse as new
+    let source = findSource(config.sources, args.source);
+    if (!source) {
+      source = parseSourceString(args.source);
+    }
+
+    const repoPath = getRepoPath(source);
 
     // Ensure repo is cloned
-    console.log(`Checking ${parsed.original}...`);
-    await ensureRepo(parsed);
+    console.log(`Checking ${source.name}...`);
+    await ensureRepo(source);
 
     // Detect format
     const format = await detectFormat(repoPath);
@@ -124,8 +156,8 @@ const discoverCommand = defineCommand({
       return;
     }
 
-    // Discover artifacts
-    const artifacts = await discoverArtifacts(repoPath, parsed.subpath);
+    // Discover artifacts (use source's explicit format if set)
+    const artifacts = await discoverArtifacts(repoPath, source.subdir, source.format);
 
     if (artifacts.length === 0) {
       console.log("No artifacts found");

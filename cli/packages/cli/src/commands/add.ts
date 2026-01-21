@@ -2,12 +2,20 @@ import { defineCommand } from "citty";
 import {
   loadConfig,
   saveConfig,
-  parseSource,
+  parseSourceString,
   ensureRepo,
   getRepoPath,
   discoverArtifacts,
   type DiscoveredArtifact,
+  type Source,
 } from "@agpm/core";
+
+/**
+ * Find a source in the config by name.
+ */
+function findSource(sources: Source[], name: string): Source | undefined {
+  return sources.find((s) => s.name === name);
+}
 
 export const addCommand = defineCommand({
   meta: {
@@ -30,15 +38,16 @@ export const addCommand = defineCommand({
     const cwd = process.cwd();
     const config = await loadConfig(cwd);
 
-    const parsed = parseSource(args.source);
-    console.log(`Resolving ${parsed.original}...`);
+    // Parse CLI shorthand into a Source object
+    const source = parseSourceString(args.source);
+    console.log(`Resolving ${source.name}...`);
 
     // Ensure repo is cloned
-    await ensureRepo(parsed);
-    const repoPath = getRepoPath(parsed);
+    await ensureRepo(source);
+    const repoPath = getRepoPath(source);
 
-    // Discover available artifacts
-    const artifacts = await discoverArtifacts(repoPath, parsed.subpath);
+    // Discover available artifacts (use source's explicit format if set)
+    const artifacts = await discoverArtifacts(repoPath, source.subdir, source.format);
 
     if (artifacts.length === 0) {
       console.log("No artifacts found in source");
@@ -87,7 +96,7 @@ export const addCommand = defineCommand({
     }
 
     // Build artifact reference
-    const artifactRef = `${args.source}/${artifact.name}`;
+    const artifactRef = `${source.name}/${artifact.name}`;
 
     // Check if already added
     if (config.artifacts.includes(artifactRef)) {
@@ -95,9 +104,9 @@ export const addCommand = defineCommand({
       return;
     }
 
-    // Also check if source is already in sources list
-    if (!config.sources.includes(args.source)) {
-      config.sources.push(args.source);
+    // Also ensure source is in sources list
+    if (!findSource(config.sources, source.name)) {
+      config.sources.push(source);
     }
 
     // Add artifact

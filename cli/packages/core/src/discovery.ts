@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join, relative, basename } from "node:path";
 import { parse as parseYaml } from "yaml";
+import type { SourceFormat } from "./config.js";
 
 // ============================================================================
 // Types
@@ -18,12 +19,13 @@ export interface DiscoveredArtifact {
   /** Full absolute path */
   absolutePath: string;
   /** Source format that was detected */
-  format: "claude-marketplace" | "simple";
+  format: SourceFormat;
   /** Additional metadata */
   metadata?: Record<string, unknown>;
 }
 
-export interface ClaudePluginManifest {
+/** Marketplace manifest (.claude-plugin/marketplace.json) - multiple plugins */
+export interface ClaudeMarketplaceManifest {
   name: string;
   owner?: {
     name: string;
@@ -41,13 +43,30 @@ export interface ClaudePluginManifest {
   }>;
 }
 
+/** Plugin manifest (.claude-plugin/plugin.json) - single plugin */
+export interface ClaudePluginManifest {
+  name: string;
+  version?: string;
+  description?: string;
+  author?: {
+    name: string;
+    email?: string;
+    url?: string;
+  };
+  /** Skills path(s) - can be string or array */
+  skills?: string | string[];
+  commands?: string | string[];
+  agents?: string | string[];
+}
+
 export interface SkillMetadata {
   name: string;
   description?: string;
   [key: string]: unknown;
 }
 
-export type RepoFormat = "claude-marketplace" | "simple" | "unknown";
+/** Detected format or unknown */
+export type RepoFormat = SourceFormat | "unknown";
 
 // ============================================================================
 // Format Detection
@@ -55,6 +74,7 @@ export type RepoFormat = "claude-marketplace" | "simple" | "unknown";
 
 /**
  * Detect the format of a repository.
+ * Checks in order of specificity: marketplace > plugin > simple
  */
 export async function detectFormat(repoPath: string): Promise<RepoFormat> {
   // Check for Claude marketplace format (.claude-plugin/marketplace.json)
@@ -63,6 +83,14 @@ export async function detectFormat(repoPath: string): Promise<RepoFormat> {
     return "claude-marketplace";
   } catch {
     // Not claude-marketplace format
+  }
+
+  // Check for Claude plugin format (.claude-plugin/plugin.json)
+  try {
+    await stat(join(repoPath, ".claude-plugin", "plugin.json"));
+    return "claude-plugin";
+  } catch {
+    // Not claude-plugin format
   }
 
   // Check for simple format (skills/ directory)
@@ -84,17 +112,28 @@ export async function detectFormat(repoPath: string): Promise<RepoFormat> {
 
 /**
  * Discover all artifacts in a repository.
+ *
+ * @param repoPath - Path to the repository
+ * @param subdir - Optional subdirectory to search within
+ * @param explicitFormat - If provided, use this format instead of auto-detecting
  */
 export async function discoverArtifacts(
   repoPath: string,
-  subpath?: string
+  subdir?: string,
+  explicitFormat?: SourceFormat
 ): Promise<DiscoveredArtifact[]> {
-  const searchPath = subpath ? join(repoPath, subpath) : repoPath;
-  const format = await detectFormat(searchPath);
+  const searchPath = subdir ? join(repoPath, subdir) : repoPath;
+
+  // Use explicit format if provided and not "auto", otherwise detect
+  const format = (explicitFormat && explicitFormat !== "auto")
+    ? explicitFormat
+    : await detectFormat(searchPath);
 
   switch (format) {
     case "claude-marketplace":
       return discoverClaudeMarketplace(searchPath);
+    case "claude-plugin":
+      return discoverClaudePlugin(searchPath);
     case "simple":
       return discoverSimpleFormat(searchPath);
     default:
@@ -104,16 +143,13 @@ export async function discoverArtifacts(
 }
 
 /**
- * Discover artifacts from Claude plugin manifest.
+ * Discover artifacts from Claude marketplace manifest.
  *
- * Claude marketplace format:
- * - .claude-marketplace/marketplace.json contains plugins array
- * - Each plugin has `source` pointing to a directory
+ * Marketplace format (.claude-plugin/marketplace.json):
+ * - Contains `plugins` array with multiple plugin entries
+ * - Each plugin has `source` pointing to a plugin directory
  * - That directory contains a `skills/` subdirectory with skill folders
  * - Each skill folder has SKILL.md
- *
- * Some repos (like Anthropic's) also include explicit `skills` arrays
- * as a convenience, which we support as a fallback.
  */
 async function discoverClaudeMarketplace(repoPath: string): Promise<DiscoveredArtifact[]> {
   const manifestPath = join(repoPath, ".claude-plugin", "marketplace.json");
@@ -121,12 +157,13 @@ async function discoverClaudeMarketplace(repoPath: string): Promise<DiscoveredAr
   const seenPaths = new Set<string>();
 
   const content = await readFile(manifestPath, "utf-8");
-  const manifest: ClaudePluginManifest = JSON.parse(content);
+  const manifest: ClaudeMarketplaceManifest = JSON.parse(content);
 
   for (const plugin of manifest.plugins) {
     // Primary method: source points to plugin directory with skills/ inside
     if (plugin.source) {
-      const sourcePath = plugin.source.replace(/^\.\//, "");
+      // Handle source as string or object with source property
+      const sourcePath = (typeof plugin.source === "string" ? plugin.source : "").replace(/^\.\//, "");
       const pluginDir = sourcePath ? join(repoPath, sourcePath) : repoPath;
       const skillsDir = join(pluginDir, "skills");
 
@@ -182,6 +219,72 @@ async function discoverClaudeMarketplace(repoPath: string): Promise<DiscoveredAr
           metadata: metadata as Record<string, unknown> | undefined,
         });
       }
+    }
+  }
+
+  return artifacts;
+}
+
+/**
+ * Discover artifacts from Claude plugin manifest.
+ *
+ * Plugin format (.claude-plugin/plugin.json):
+ * - Single plugin with optional `skills` field (string or array of paths)
+ * - Default `skills/` directory is always searched
+ * - Each skill is a directory with SKILL.md
+ */
+async function discoverClaudePlugin(repoPath: string): Promise<DiscoveredArtifact[]> {
+  const manifestPath = join(repoPath, ".claude-plugin", "plugin.json");
+  const artifacts: DiscoveredArtifact[] = [];
+  const seenPaths = new Set<string>();
+
+  const content = await readFile(manifestPath, "utf-8");
+  const manifest: ClaudePluginManifest = JSON.parse(content);
+
+  // Collect skill directories to search
+  const skillsDirs: string[] = [];
+
+  // Add custom skills paths from manifest
+  if (manifest.skills) {
+    const paths = Array.isArray(manifest.skills) ? manifest.skills : [manifest.skills];
+    for (const p of paths) {
+      const normalized = p.replace(/^\.\//, "");
+      skillsDirs.push(join(repoPath, normalized));
+    }
+  }
+
+  // Always add default skills/ directory
+  skillsDirs.push(join(repoPath, "skills"));
+
+  // Search each skills directory
+  for (const skillsDir of skillsDirs) {
+    try {
+      const entries = await readdir(skillsDir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+
+        const skillPath = join(skillsDir, entry.name);
+        const relativePath = relative(repoPath, skillPath);
+
+        // Skip duplicates
+        if (seenPaths.has(relativePath)) continue;
+        seenPaths.add(relativePath);
+
+        const metadata = await parseSkillMd(skillPath);
+
+        artifacts.push({
+          name: metadata?.name ?? entry.name,
+          description: metadata?.description ?? manifest.description,
+          type: "skill",
+          path: relativePath,
+          absolutePath: skillPath,
+          format: "claude-plugin",
+          metadata: metadata as Record<string, unknown> | undefined,
+        });
+      }
+    } catch {
+      // skills directory doesn't exist or can't be read
     }
   }
 

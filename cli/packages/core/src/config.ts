@@ -10,10 +10,25 @@ export interface TargetConfig {
   // Target-specific options (to be expanded)
 }
 
+/** Source format for artifact discovery */
+export type SourceFormat = "auto" | "claude-marketplace" | "claude-plugin" | "simple";
+
+/** A normalized source configuration */
+export interface Source {
+  /** Display name for the source (e.g., "anthropics/skills") */
+  name: string;
+  /** Full git URL (e.g., "https://github.com/anthropics/skills.git") */
+  url: string;
+  /** Format for artifact discovery. Defaults to "auto" if omitted. */
+  format?: SourceFormat;
+  /** Subdirectory within the repo to use as root */
+  subdir?: string;
+}
+
 export interface AgpmConfig {
   $schema?: string;
   targets: Record<string, TargetConfig>;
-  sources: string[];
+  sources: Source[];
   artifacts: string[];
 }
 

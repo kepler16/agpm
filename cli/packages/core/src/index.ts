@@ -4,6 +4,8 @@ export {
   type AgpmLock,
   type TargetConfig,
   type LockedArtifact,
+  type Source,
+  type SourceFormat,
   DEFAULT_CONFIG,
   DEFAULT_LOCK,
   CONFIG_SCHEMA_URL,
@@ -25,9 +27,8 @@ export {
 
 // Git operations
 export {
-  type ParsedSource,
   type RepoInfo,
-  parseSource,
+  parseSourceString,
   getAgpmDir,
   getRepoPath,
   ensureRepo,
@@ -38,6 +39,7 @@ export {
 // Discovery
 export {
   type DiscoveredArtifact,
+  type ClaudeMarketplaceManifest,
   type ClaudePluginManifest,
   type SkillMetadata,
   type RepoFormat,

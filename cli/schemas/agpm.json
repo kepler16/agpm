@@ -29,13 +29,29 @@
       "type": "array",
       "description": "Git repositories or local paths containing artifacts",
       "items": {
-        "type": "string",
-        "description": "Source reference (owner/repo, URL, or local path). Use # for subpaths.",
-        "examples": [
-          "anthropics/skills",
-          "anthropics/skills#experimental",
-          "./local-skills"
-        ]
+        "type": "object",
+        "description": "Source configuration",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Display name for the source (e.g., 'anthropics/skills')"
+          },
+          "url": {
+            "type": "string",
+            "description": "Full git URL for cloning"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["auto", "claude-marketplace", "claude-plugin", "simple"],
+            "description": "Format for artifact discovery. Defaults to 'auto' if omitted."
+          },
+          "subdir": {
+            "type": "string",
+            "description": "Subdirectory within the repo to use as root"
+          }
+        },
+        "required": ["name", "url"],
+        "additionalProperties": false
       }
     },
     "artifacts": {

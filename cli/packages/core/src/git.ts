@@ -2,25 +2,11 @@ import { simpleGit, SimpleGit } from "simple-git";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { mkdir } from "node:fs/promises";
+import type { Source } from "./config.js";
 
 // ============================================================================
 // Types
 // ============================================================================
-
-export interface ParsedSource {
-  /** Full git URL for cloning */
-  url: string;
-  /** GitHub owner (if GitHub) */
-  owner?: string;
-  /** Repository name */
-  repo?: string;
-  /** Git ref (branch, tag, SHA) */
-  ref?: string;
-  /** Subpath within repo (after #) */
-  subpath?: string;
-  /** Original source string */
-  original: string;
-}
 
 export interface RepoInfo {
   /** Path to the cloned repo */
@@ -34,64 +20,125 @@ export interface RepoInfo {
 // ============================================================================
 
 /**
- * Parse a source string into its components.
- *
- * Supported formats:
- * - owner/repo
- * - owner/repo#subpath
- * - https://github.com/owner/repo
- * - https://github.com/owner/repo#subpath
- * - ./local/path
+ * Check if a string looks like a git URL.
  */
-export function parseSource(source: string): ParsedSource {
-  const original = source;
+function isGitUrl(str: string): boolean {
+  return (
+    str.startsWith("https://") ||
+    str.startsWith("http://") ||
+    str.startsWith("git://") ||
+    str.startsWith("git+ssh://") ||
+    str.startsWith("git+https://") ||
+    str.startsWith("ssh://") ||
+    str.startsWith("git@")
+  );
+}
 
-  // Local path
-  if (source.startsWith("./") || source.startsWith("/") || source.startsWith("~")) {
+/**
+ * Extract owner/repo from a GitHub-like URL.
+ * Works with github.com, gitlab.com, bitbucket.org, etc.
+ */
+function extractRepoInfo(url: string): { owner: string; repo: string } | null {
+  // Handle git@host:owner/repo.git format
+  const sshMatch = url.match(/git@[\w.-]+:([\w.-]+)\/([\w.-]+)/);
+  if (sshMatch) {
     return {
-      url: source,
-      original,
+      owner: sshMatch[1],
+      repo: sshMatch[2].replace(/\.git$/, ""),
     };
   }
 
-  // Split on # for subpath
-  let subpath: string | undefined;
+  // Handle URL formats (https://, git://, ssh://, etc.)
+  const urlMatch = url.match(/(?:github\.com|gitlab\.com|bitbucket\.org)[/:]+([\w.-]+)\/([\w.-]+)/);
+  if (urlMatch) {
+    return {
+      owner: urlMatch[1],
+      repo: urlMatch[2].replace(/\.git$/, ""),
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Ensure URL ends with .git for consistency.
+ */
+function normalizeGitUrl(url: string): string {
+  // Remove git+ prefix for storage (git+ssh:// -> ssh://)
+  let normalized = url.replace(/^git\+(ssh|https):\/\//, "$1://");
+
+  // Add .git suffix if missing
+  if (!normalized.endsWith(".git")) {
+    normalized = `${normalized}.git`;
+  }
+
+  return normalized;
+}
+
+/**
+ * Parse a CLI source shorthand string into a normalized Source object.
+ *
+ * Supported formats:
+ * - owner/repo (GitHub shorthand)
+ * - owner/repo#subdir
+ * - https://github.com/owner/repo
+ * - git://github.com/owner/repo
+ * - git+ssh://git@github.com/owner/repo
+ * - git@github.com:owner/repo
+ * - Any of the above with #subdir suffix
+ *
+ * Returns a Source object suitable for storing in agpm.json.
+ */
+export function parseSourceString(input: string): Source {
+  // Split on # for subdir
+  let subdir: string | undefined;
+  let source = input;
   const hashIndex = source.indexOf("#");
   if (hashIndex !== -1) {
-    subpath = source.slice(hashIndex + 1);
+    subdir = source.slice(hashIndex + 1);
     source = source.slice(0, hashIndex);
   }
 
-  // Full URL
-  if (source.startsWith("https://") || source.startsWith("git@")) {
-    const match = source.match(/github\.com[/:]([\w.-]+)\/([\w.-]+)/);
-    if (match) {
+  // Full URL (various git protocols)
+  if (isGitUrl(source)) {
+    const repoInfo = extractRepoInfo(source);
+    const url = normalizeGitUrl(source);
+
+    if (repoInfo) {
       return {
-        url: source.endsWith(".git") ? source : `${source}.git`,
-        owner: match[1],
-        repo: match[2].replace(/\.git$/, ""),
-        subpath,
-        original,
+        name: `${repoInfo.owner}/${repoInfo.repo}`,
+        url,
+        ...(subdir && { subdir }),
       };
     }
-    return { url: source, subpath, original };
+
+    // Non-standard URL - use sanitized version as name
+    const name = source
+      .replace(/^(git\+)?(https?|git|ssh):\/\//, "")
+      .replace(/^git@/, "")
+      .replace(/\.git$/, "")
+      .replace(":", "/");
+
+    return {
+      name,
+      url,
+      ...(subdir && { subdir }),
+    };
   }
 
-  // owner/repo shorthand
+  // owner/repo shorthand (assumes GitHub)
   const parts = source.split("/");
   if (parts.length >= 2) {
     const owner = parts[0];
     const repo = parts[1];
     return {
+      name: `${owner}/${repo}`,
       url: `https://github.com/${owner}/${repo}.git`,
-      owner,
-      repo,
-      subpath,
-      original,
+      ...(subdir && { subdir }),
     };
   }
 
-  throw new Error(`Invalid source format: ${original}`);
+  throw new Error(`Invalid source format: ${input}`);
 }
 
 // ============================================================================
@@ -106,29 +153,47 @@ export function getAgpmDir(): string {
 }
 
 /**
- * Get the path where a repo should be stored.
+ * Get the path where a repo should be stored based on its URL.
  */
-export function getRepoPath(source: ParsedSource): string {
-  const apmDir = getAgpmDir();
+export function getRepoPath(source: Source): string {
+  const agpmDir = getAgpmDir();
 
-  if (source.owner && source.repo) {
-    return join(apmDir, "repos", "github.com", source.owner, source.repo);
+  // Parse the URL to extract host and path
+  const url = source.url;
+
+  // Handle git@host:path format
+  const sshMatch = url.match(/git@([\w.-]+):([\w.-]+)\/([\w.-]+)/);
+  if (sshMatch) {
+    const host = sshMatch[1];
+    const owner = sshMatch[2];
+    const repo = sshMatch[3].replace(/\.git$/, "");
+    return join(agpmDir, "repos", host, owner, repo);
   }
 
-  // For non-GitHub URLs, use a sanitized version
-  const sanitized = source.url
-    .replace(/^https?:\/\//, "")
-    .replace(/\.git$/, "")
-    .replace(/[^a-zA-Z0-9.-]/g, "_");
+  // Handle URL formats
+  const urlMatch = url.match(/(?:https?|git|ssh):\/\/([\w.-]+)\/([\w.-]+)\/([\w.-]+)/);
+  if (urlMatch) {
+    const host = urlMatch[1];
+    const owner = urlMatch[2];
+    const repo = urlMatch[3].replace(/\.git$/, "");
+    return join(agpmDir, "repos", host, owner, repo);
+  }
 
-  return join(apmDir, "repos", sanitized);
+  // Fallback: sanitize the whole URL
+  const sanitized = url
+    .replace(/^(git\+)?(https?|git|ssh):\/\//, "")
+    .replace(/^git@/, "")
+    .replace(/\.git$/, "")
+    .replace(/[^a-zA-Z0-9./-]/g, "_");
+
+  return join(agpmDir, "repos", sanitized);
 }
 
 /**
  * Clone or fetch a repository.
  * Returns the path to the repo and the current HEAD SHA.
  */
-export async function ensureRepo(source: ParsedSource): Promise<RepoInfo> {
+export async function ensureRepo(source: Source): Promise<RepoInfo> {
   const repoPath = getRepoPath(source);
 
   // Ensure parent directory exists

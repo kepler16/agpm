@@ -3,12 +3,33 @@ import {
   loadConfig,
   loadLock,
   saveLock,
-  parseSource,
+  parseSourceString,
   ensureRepo,
   getRepoPath,
   discoverArtifacts,
   resolveRef,
+  type Source,
 } from "@agpm/core";
+
+/**
+ * Find a source in the config by name.
+ */
+function findSource(sources: Source[], name: string): Source | undefined {
+  return sources.find((s) => s.name === name);
+}
+
+/**
+ * Parse artifact reference (source/artifact-name) into source name and artifact name.
+ */
+function parseArtifactRef(ref: string): { sourceName: string; artifactName: string } | null {
+  const lastSlash = ref.lastIndexOf("/");
+  if (lastSlash === -1) return null;
+
+  return {
+    sourceName: ref.slice(0, lastSlash),
+    artifactName: ref.slice(lastSlash + 1),
+  };
+}
 
 export const updateCommand = defineCommand({
   meta: {
@@ -52,21 +73,34 @@ export const updateCommand = defineCommand({
     let updated = 0;
 
     for (const artifactRef of artifactsToUpdate) {
-      // Parse artifact reference: source/artifact-name
-      const lastSlash = artifactRef.lastIndexOf("/");
-      const sourceStr = artifactRef.slice(0, lastSlash);
-      const artifactName = artifactRef.slice(lastSlash + 1);
+      // Parse artifact reference: source-name/artifact-name
+      const parsed = parseArtifactRef(artifactRef);
+      if (!parsed) {
+        console.log(`Invalid artifact reference: ${artifactRef}`);
+        continue;
+      }
 
-      const parsed = parseSource(sourceStr);
+      const { sourceName, artifactName } = parsed;
+
+      // Look up source from config, fallback to parsing as new
+      let source = findSource(config.sources, sourceName);
+      if (!source) {
+        try {
+          source = parseSourceString(sourceName);
+        } catch {
+          console.log(`Source not found: ${sourceName}`);
+          continue;
+        }
+      }
 
       console.log(`Checking ${artifactRef}...`);
 
       // Fetch latest
-      await ensureRepo(parsed);
-      const repoPath = getRepoPath(parsed);
+      await ensureRepo(source);
+      const repoPath = getRepoPath(source);
 
       // Resolve latest SHA
-      const latestSha = await resolveRef(repoPath, parsed.ref || "HEAD");
+      const latestSha = await resolveRef(repoPath, "HEAD");
 
       // Check if update needed
       const lockEntry = lock.artifacts[artifactRef];
@@ -75,8 +109,8 @@ export const updateCommand = defineCommand({
         continue;
       }
 
-      // Discover to get path
-      const artifacts = await discoverArtifacts(repoPath, parsed.subpath);
+      // Discover to get path (use source's explicit format if set)
+      const artifacts = await discoverArtifacts(repoPath, source.subdir, source.format);
       const artifact = artifacts.find((a) => a.name === artifactName);
 
       if (!artifact) {

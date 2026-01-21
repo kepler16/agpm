@@ -5,15 +5,36 @@ import {
   loadConfig,
   loadLock,
   saveLock,
-  parseSource,
+  parseSourceString,
   ensureRepo,
   getRepoPath,
   discoverArtifacts,
   resolveRef,
+  type Source,
 } from "@agpm/core";
 
 // Default target directories for different AI tools
 const TARGET_DIRS = [".claude/skills", ".opencode/skills", ".codex/skills"];
+
+/**
+ * Find a source in the config by name.
+ */
+function findSource(sources: Source[], name: string): Source | undefined {
+  return sources.find((s) => s.name === name);
+}
+
+/**
+ * Parse artifact reference (source/artifact-name) into source name and artifact name.
+ */
+function parseArtifactRef(ref: string): { sourceName: string; artifactName: string } | null {
+  const lastSlash = ref.lastIndexOf("/");
+  if (lastSlash === -1) return null;
+
+  return {
+    sourceName: ref.slice(0, lastSlash),
+    artifactName: ref.slice(lastSlash + 1),
+  };
+}
 
 export const installCommand = defineCommand({
   meta: {
@@ -44,17 +65,26 @@ export const installCommand = defineCommand({
     let updated = false;
 
     for (const artifactRef of config.artifacts) {
-      // Parse artifact reference: source/artifact-name
-      const lastSlash = artifactRef.lastIndexOf("/");
-      if (lastSlash === -1) {
+      // Parse artifact reference: source-name/artifact-name
+      const parsed = parseArtifactRef(artifactRef);
+      if (!parsed) {
         console.log(`Invalid artifact reference: ${artifactRef}`);
         continue;
       }
 
-      const sourceStr = artifactRef.slice(0, lastSlash);
-      const artifactName = artifactRef.slice(lastSlash + 1);
+      const { sourceName, artifactName } = parsed;
 
-      const parsed = parseSource(sourceStr);
+      // Look up source from config, fallback to parsing as new
+      let source = findSource(config.sources, sourceName);
+      if (!source) {
+        // Source not in config, try to parse it
+        try {
+          source = parseSourceString(sourceName);
+        } catch {
+          console.log(`Source not found: ${sourceName}`);
+          continue;
+        }
+      }
 
       // Check if we have a lock entry
       let lockEntry = lock.artifacts[artifactRef];
@@ -64,11 +94,11 @@ export const installCommand = defineCommand({
         console.log(`Resolving ${artifactRef}...`);
 
         // Ensure repo is cloned
-        await ensureRepo(parsed);
-        const repoPath = getRepoPath(parsed);
+        await ensureRepo(source);
+        const repoPath = getRepoPath(source);
 
-        // Discover artifacts to get the path
-        const artifacts = await discoverArtifacts(repoPath, parsed.subpath);
+        // Discover artifacts to get the path (use source's explicit format if set)
+        const artifacts = await discoverArtifacts(repoPath, source.subdir, source.format);
         const artifact = artifacts.find((a) => a.name === artifactName);
 
         if (!artifact) {
@@ -77,7 +107,7 @@ export const installCommand = defineCommand({
         }
 
         // Resolve SHA
-        const sha = await resolveRef(repoPath, parsed.ref || "HEAD");
+        const sha = await resolveRef(repoPath, "HEAD");
 
         lockEntry = {
           sha,
@@ -94,8 +124,8 @@ export const installCommand = defineCommand({
       }
 
       // Install to target directories
-      const installRepoPath = getRepoPath(parsed);
-      const sourcePath = join(installRepoPath, lockEntry.path);
+      const repoPath = getRepoPath(source);
+      const sourcePath = join(repoPath, lockEntry.path);
 
       for (const targetDir of TARGET_DIRS) {
         const targetPath = join(cwd, targetDir, artifactName);
