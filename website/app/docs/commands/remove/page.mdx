@@ -1,0 +1,56 @@
+# remove
+
+Remove an artifact from your configuration.
+
+## Usage
+
+```bash
+agpm remove <artifact>
+```
+
+## Arguments
+
+<Table>
+  <Thead>
+    <Tr>
+      <Th>Argument</Th>
+      <Th>Description</Th>
+    </Tr>
+  </Thead>
+  <Tbody>
+    <Tr>
+      <Td>`artifact`</Td>
+      <Td>The artifact identifier to remove</Td>
+    </Tr>
+  </Tbody>
+</Table>
+
+## Example
+
+```bash
+agpm remove anthropics/skills/pdf
+```
+
+## What Happens
+
+1. Removes the artifact from `agpm.json`
+2. Removes the artifact from `agpm-lock.json` (if present)
+3. Does **not** delete installed files
+
+## Note
+
+The `remove` command only updates configuration files. Previously installed files in target directories remain until manually deleted or overwritten.
+
+To completely remove an artifact:
+
+```bash
+agpm remove anthropics/skills/pdf
+rm -rf .claude/skills/pdf
+rm -rf .opencode/skills/pdf
+rm -rf .codex/skills/pdf
+```
+
+## See Also
+
+- [add](/docs/commands/add) - Add artifacts
+- [list](/docs/commands/list) - View configured artifacts

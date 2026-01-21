@@ -1,0 +1,66 @@
+# add
+
+Add an artifact to your project from a source repository.
+
+## Usage
+
+```bash
+agpm add <source> [artifact]
+```
+
+## Arguments
+
+<Table>
+  <Thead>
+    <Tr>
+      <Th>Argument</Th>
+      <Th>Description</Th>
+    </Tr>
+  </Thead>
+  <Tbody>
+    <Tr>
+      <Td>`source`</Td>
+      <Td>Repository containing the artifact (e.g., `anthropics/skills`)</Td>
+    </Tr>
+    <Tr>
+      <Td>`artifact`</Td>
+      <Td>Optional name of specific artifact to add</Td>
+    </Tr>
+  </Tbody>
+</Table>
+
+## Source Formats
+
+The `<source>` argument accepts multiple formats:
+
+- `owner/repo` - GitHub shorthand
+- `owner/repo#subpath` - With subpath for monorepos
+- `https://github.com/owner/repo` - Full URL
+
+## Examples
+
+Add a specific skill from a repository:
+
+```bash
+agpm add anthropics/skills pdf
+```
+
+Add from a repository with a subpath:
+
+```bash
+agpm add owner/repo#packages/skills my-skill
+```
+
+## What Happens
+
+1. Clones the repository to `~/.agpm/repos/` (if not cached)
+2. Discovers available artifacts in the repository
+3. Adds the specified artifact to your `agpm.json`
+
+After adding, run `agpm install` to install the artifact to your target directories.
+
+## See Also
+
+- [install](/docs/commands/install) - Install added artifacts
+- [Sources](/docs/concepts/sources) - Learn about source formats
+- [Discovery](/docs/concepts/discovery) - How artifacts are discovered

@@ -12,12 +12,10 @@ import {
   discover,
   checkoutToCache,
   hashDirectory,
+  getEnabledTargetPaths,
   type Source,
   type DiscoveredArtifact,
 } from "@agpm/core";
-
-// Default target directories for different AI tools
-const TARGET_DIRS = [".claude/skills", ".opencode/skills", ".codex/skills"];
 
 /**
  * Find a source in the config by name.
@@ -57,6 +55,15 @@ export const installCommand = defineCommand({
     const cwd = process.cwd();
     const config = await loadConfig(cwd);
     const lock = await loadLock(cwd);
+
+    // Check for configured targets
+    const targetDirs = getEnabledTargetPaths(config.targets, "skill");
+    if (targetDirs.length === 0) {
+      console.log("No targets configured.");
+      console.log("\nAdd targets to agpm.json:");
+      console.log('  "targets": { "claude-code": true, "opencode": true }');
+      return;
+    }
 
     if (config.collections.length === 0 && config.artifacts.length === 0) {
       console.log("No artifacts or collections configured.");
@@ -189,7 +196,7 @@ export const installCommand = defineCommand({
       const { cachePath } = await checkoutToCache(repoPath, lockEntry.sha);
       const sourcePath = join(cachePath, lockEntry.path);
 
-      for (const targetDir of TARGET_DIRS) {
+      for (const targetDir of targetDirs) {
         const targetPath = join(cwd, targetDir, artifactName);
 
         try {

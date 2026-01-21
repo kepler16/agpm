@@ -63,3 +63,14 @@ export {
   discover,
   discoverArtifacts,
 } from "./discovery.js";
+
+// Targets
+export {
+  type TargetDefinition,
+  type ArtifactType,
+  BUILT_IN_TARGETS,
+  getTargetPath,
+  getEnabledTargetPaths,
+  isValidTarget,
+  getValidTargetNames,
+} from "./targets.js";

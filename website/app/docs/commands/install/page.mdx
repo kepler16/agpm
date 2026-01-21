@@ -1,0 +1,56 @@
+# install
+
+Install all configured artifacts to their target directories.
+
+## Usage
+
+```bash
+agpm install
+```
+
+Also available as:
+
+```bash
+agpm sync
+```
+
+## What Happens
+
+1. Reads your `agpm.json` configuration
+2. Resolves artifact SHAs (uses lock file if present)
+3. Copies artifacts to all configured target directories
+
+## Target Directories
+
+By default, artifacts are installed to:
+
+- `.claude/skills/<name>/` - Claude Code
+- `.opencode/skills/<name>/` - OpenCode
+- `.codex/skills/<name>/` - Codex
+
+Custom targets can be configured in `agpm.json`.
+
+## Lock File
+
+When a `agpm-lock.json` exists, install uses the pinned SHAs for reproducible installs. This ensures all team members get the exact same artifact versions.
+
+## Examples
+
+Basic install:
+
+```bash
+agpm install
+```
+
+After adding new artifacts:
+
+```bash
+agpm add anthropics/skills pdf
+agpm install
+```
+
+## See Also
+
+- [update](/docs/commands/update) - Update artifacts to latest versions
+- [Configuration](/docs/configuration) - Configure agpm.json
+- [Targets](/docs/concepts/targets) - Learn about installation targets

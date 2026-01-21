@@ -5,7 +5,7 @@ import { CodeWindow } from "@/components/shared/code-window";
 
 export function Hero() {
   return (
-    <section className="container py-24 md:py-32">
+    <section className="container mx-auto py-24 md:py-32 px-4 md:px-6 lg:px-8">
       <div className="flex flex-col items-center text-center space-y-8">
         <div className="space-y-4 max-w-3xl">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">

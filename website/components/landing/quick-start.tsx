@@ -21,7 +21,7 @@ const steps = [
 
 export function QuickStart() {
   return (
-    <section className="container py-24">
+    <section className="container mx-auto py-24 px-4 md:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">

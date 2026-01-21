@@ -1,0 +1,71 @@
+# source
+
+Manage source repositories for artifact discovery.
+
+## Commands
+
+### source add
+
+Add a source repository to your configuration.
+
+```bash
+agpm source add <repo>
+```
+
+### source list
+
+List all configured source repositories.
+
+```bash
+agpm source list
+```
+
+### source remove
+
+Remove a source repository.
+
+```bash
+agpm source remove <repo>
+```
+
+### source discover
+
+Show available artifacts in a source repository.
+
+```bash
+agpm source discover <repo>
+```
+
+## Examples
+
+Add a source and discover its artifacts:
+
+```bash
+agpm source add anthropics/skills
+agpm source discover anthropics/skills
+```
+
+Output:
+
+```
+Discovering artifacts in anthropics/skills...
+
+Available artifacts:
+  - pdf: PDF manipulation toolkit
+  - web-search: Web search integration
+  - image-gen: Image generation skill
+```
+
+## Source Formats
+
+The `<repo>` argument accepts:
+
+- `owner/repo` - GitHub shorthand
+- `owner/repo#subpath` - With subpath
+- `https://github.com/owner/repo` - Full URL
+
+## See Also
+
+- [Sources](/docs/concepts/sources) - Learn about source formats
+- [Discovery](/docs/concepts/discovery) - How artifacts are discovered
+- [add](/docs/commands/add) - Add specific artifacts

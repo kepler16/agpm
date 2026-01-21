@@ -1,6 +1,9 @@
 {
   "$schema": "https://agpm.dev/schemas/agpm.json",
-  "targets": {},
+  "targets": {
+    "claude-code": true,
+    "opencode": true
+  },
   "sources": [
     {
       "name": "anthropics/skills",
@@ -8,9 +11,7 @@
     }
   ],
   "artifacts": [
-    "anthropics/skills/pdf",
-    "anthropics/skills/docx@main",
-    "anthropics/skills/xlsx@69c0b1a"
+    "anthropics/skills/pdf"
   ],
   "collections": []
 }

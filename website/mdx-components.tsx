@@ -1,6 +1,8 @@
 import type { MDXComponents } from "mdx/types";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { Table, Thead, Tbody, Tr, Th, Td } from "@/components/docs/table";
+import { highlight } from "sugar-high";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
@@ -68,14 +70,27 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         {...props}
       />
     ),
-    // Code - inline code
-    code: ({ className, ...props }) => {
+    // Code - inline code and code blocks
+    code: ({ className, children, ...props }) => {
       // Check if this is inside a pre (code block) vs inline code
       const isInPre = className?.includes("language-");
       if (isInPre) {
+        // Extract text content from children (handles React elements)
+        const getTextContent = (node: React.ReactNode): string => {
+          if (typeof node === "string") return node;
+          if (typeof node === "number") return String(node);
+          if (Array.isArray(node)) return node.map(getTextContent).join("");
+          if (node && typeof node === "object" && "props" in node) {
+            return getTextContent((node as React.ReactElement).props.children);
+          }
+          return "";
+        };
+        const codeString = getTextContent(children);
+        const html = highlight(codeString);
         return (
           <code
-            className={cn("font-mono text-sm text-zinc-100", className)}
+            className={cn("font-mono text-sm", className)}
+            dangerouslySetInnerHTML={{ __html: html }}
             {...props}
           />
         );
@@ -87,14 +102,16 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
             className
           )}
           {...props}
-        />
+        >
+          {children}
+        </code>
       );
     },
     // Code - code blocks
     pre: ({ className, ...props }) => (
       <pre
         className={cn(
-          "mb-4 mt-6 overflow-x-auto rounded-lg border bg-zinc-950 px-4 py-4 dark:bg-zinc-900",
+          "mb-4 mt-6 overflow-x-auto rounded-lg border bg-zinc-950 px-4 py-4 dark:bg-zinc-900 text-zinc-100",
           className
         )}
         {...props}
@@ -151,6 +168,13 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     },
     // Horizontal rule
     hr: ({ ...props }) => <hr className="my-4 md:my-8" {...props} />,
+    // Export table components for JSX usage in MDX
+    Table,
+    Thead,
+    Tbody,
+    Tr,
+    Th,
+    Td,
     ...components,
   };
 }

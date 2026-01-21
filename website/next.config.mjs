@@ -1,13 +1,11 @@
-import type { NextConfig } from "next";
 import createMDX from "@next/mdx";
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
   reactCompiler: true,
 };
 
-const withMDX = createMDX({
-  // Add markdown plugins here, as desired
-});
+const withMDX = createMDX({});
 
 export default withMDX(nextConfig);

@@ -1,0 +1,48 @@
+# list
+
+Display all configured artifacts and their current status.
+
+## Usage
+
+```bash
+agpm list
+```
+
+## Output
+
+Shows a table of:
+
+- Artifact identifier
+- Source repository
+- Installed version (SHA)
+- Lock status (locked/unlocked)
+- Installation status
+
+## Example
+
+```bash
+$ agpm list
+
+Artifacts:
+  anthropics/skills/pdf
+    Source: anthropics/skills
+    SHA: 69c0b1a0
+    Status: Installed
+
+  owner/repo/my-skill
+    Source: owner/repo
+    SHA: (not locked)
+    Status: Not installed
+```
+
+## Use Cases
+
+- Verify which artifacts are configured
+- Check if artifacts are installed
+- See which versions are currently locked
+
+## See Also
+
+- [add](/docs/commands/add) - Add new artifacts
+- [remove](/docs/commands/remove) - Remove artifacts
+- [update](/docs/commands/update) - Update to latest versions

@@ -1,0 +1,71 @@
+# Targets
+
+Where artifacts get installed.
+
+## Overview
+
+Targets define the directories where AGPM installs artifacts. By default, AGPM supports multiple AI coding tools and installs to all of them.
+
+## Default Targets
+
+<Table>
+  <Thead>
+    <Tr>
+      <Th>Tool</Th>
+      <Th>Directory</Th>
+    </Tr>
+  </Thead>
+  <Tbody>
+    <Tr>
+      <Td>Claude Code</Td>
+      <Td>`.claude/skills/<name>/`</Td>
+    </Tr>
+    <Tr>
+      <Td>OpenCode</Td>
+      <Td>`.opencode/skills/<name>/`</Td>
+    </Tr>
+    <Tr>
+      <Td>Codex</Td>
+      <Td>`.codex/skills/<name>/`</Td>
+    </Tr>
+  </Tbody>
+</Table>
+
+## How It Works
+
+When you run `agpm install`:
+
+1. Each artifact is copied to all configured target directories
+2. Directory structure is created if it doesn't exist
+3. Files are copied preserving the artifact's internal structure
+
+## Custom Targets
+
+You can configure custom targets in `agpm.json`:
+
+```json
+{
+  "$schema": "https://agpm.dev/schemas/agpm.json",
+  "targets": {
+    "custom-tool": ".custom-tool/skills"
+  },
+  "artifacts": ["anthropics/skills/pdf"]
+}
+```
+
+## Disabling Targets
+
+To install only to specific tools, configure only those targets:
+
+```json
+{
+  "targets": {
+    "claude": ".claude/skills"
+  }
+}
+```
+
+## See Also
+
+- [install](/docs/commands/install) - Installation command
+- [Configuration](/docs/configuration) - Full configuration reference

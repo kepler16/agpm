@@ -1,0 +1,42 @@
+# Collections
+
+Group related artifacts for easier management.
+
+## Overview
+
+Collections are curated groups of related artifacts that can be referenced and managed as a single unit. They make it easier to install a cohesive set of tools.
+
+## Using Collections
+
+Collections can be defined in source repositories and referenced in your configuration:
+
+```json
+{
+  "$schema": "https://agpm.dev/schemas/agpm.json",
+  "artifacts": [
+    "anthropics/skills/productivity-collection"
+  ]
+}
+```
+
+## Creating Collections
+
+Collections are defined in the source repository's discovery format. A collection references multiple artifacts that should be installed together.
+
+## Benefits
+
+- **Curated sets** - Install recommended combinations of tools
+- **Simplified config** - One entry instead of many
+- **Coordinated updates** - All collection artifacts update together
+- **Organization** - Group artifacts by use case or domain
+
+## Example Use Cases
+
+- **Productivity suite** - Calendar, notes, task management skills
+- **Development tools** - Git, testing, deployment skills
+- **Data analysis** - Database, visualization, export skills
+
+## See Also
+
+- [Configuration](/docs/configuration) - Configuring agpm.json
+- [Discovery](/docs/concepts/discovery) - How artifacts are found

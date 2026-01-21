@@ -1,0 +1,66 @@
+# update
+
+Update the lock file to the latest available versions.
+
+## Usage
+
+```bash
+agpm update [artifact]
+```
+
+## Arguments
+
+<Table>
+  <Thead>
+    <Tr>
+      <Th>Argument</Th>
+      <Th>Description</Th>
+    </Tr>
+  </Thead>
+  <Tbody>
+    <Tr>
+      <Td>`artifact`</Td>
+      <Td>Optional: specific artifact to update. If omitted, updates all.</Td>
+    </Tr>
+  </Tbody>
+</Table>
+
+## Examples
+
+Update all artifacts:
+
+```bash
+agpm update
+```
+
+Update a specific artifact:
+
+```bash
+agpm update anthropics/skills/pdf
+```
+
+## What Happens
+
+1. Fetches the latest commit SHA for each artifact
+2. Updates `agpm-lock.json` with new SHAs
+3. Recalculates integrity hashes
+
+## Important
+
+After updating, you need to run `agpm install` to apply the changes:
+
+```bash
+agpm update
+agpm install
+```
+
+## When to Update
+
+- When you want the latest version of artifacts
+- After upstream repositories have new commits
+- When troubleshooting issues with outdated artifacts
+
+## See Also
+
+- [install](/docs/commands/install) - Install after updating
+- [Lock File](/docs/configuration/lock-file) - Understanding the lock file

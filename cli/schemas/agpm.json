@@ -11,16 +11,30 @@
     },
     "targets": {
       "type": "object",
-      "description": "AI tools to install artifacts to",
+      "description": "AI tools to install artifacts to. Only install to targets that are listed.",
+      "propertyNames": {
+        "enum": ["claude-code", "opencode", "codex"]
+      },
       "additionalProperties": {
-        "type": "object",
-        "description": "Target-specific configuration options",
-        "properties": {},
-        "additionalProperties": true
+        "oneOf": [
+          {
+            "type": "boolean",
+            "description": "Enable (true) or disable (false) this target"
+          },
+          {
+            "type": "object",
+            "description": "Target-specific configuration options (currently empty)",
+            "additionalProperties": false
+          }
+        ]
       },
       "examples": [
         {
-          "claude": {},
+          "claude-code": true,
+          "opencode": true
+        },
+        {
+          "claude-code": {},
           "opencode": {}
         }
       ]

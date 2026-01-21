@@ -1,0 +1,47 @@
+# Concepts
+
+Understanding the core concepts behind AGPM.
+
+## Overview
+
+AGPM (Agent Package Manager) manages artifacts for AI coding tools. It handles:
+
+- **Discovery** - Finding artifacts in source repositories
+- **Installation** - Copying artifacts to target directories
+- **Versioning** - Locking artifacts to specific commits
+
+## Key Concepts
+
+### Sources
+
+Source repositories contain artifacts that can be installed. AGPM supports multiple source formats including GitHub shorthand and full URLs.
+
+[Learn more about Sources](/docs/concepts/sources)
+
+### Discovery
+
+AGPM automatically discovers artifacts in source repositories by looking for specific file patterns and structures.
+
+[Learn more about Discovery](/docs/concepts/discovery)
+
+### Collections
+
+Collections are groups of related artifacts that can be managed together, making it easier to install curated sets of tools.
+
+[Learn more about Collections](/docs/concepts/collections)
+
+### Targets
+
+Targets define where artifacts are installed. AGPM supports multiple AI tools including Claude Code, OpenCode, and Codex.
+
+[Learn more about Targets](/docs/concepts/targets)
+
+## Workflow
+
+The typical AGPM workflow:
+
+1. **Add a source** - Register a repository containing artifacts
+2. **Discover artifacts** - See what's available
+3. **Add artifacts** - Select which ones you want
+4. **Install** - Copy to your AI tool directories
+5. **Update** - Keep artifacts current with upstream

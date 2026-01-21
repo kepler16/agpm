@@ -1,0 +1,70 @@
+# Discovery
+
+How AGPM discovers artifacts in source repositories.
+
+## Overview
+
+AGPM automatically discovers artifacts by scanning source repositories for specific file patterns and directory structures.
+
+## Discovery Formats
+
+### claude-marketplace
+
+Repositories with a `.claude-plugin/marketplace.json` file:
+
+```json
+{
+  "plugins": [
+    {
+      "name": "plugin-name",
+      "source": "./",
+      "description": "Plugin description"
+    }
+  ]
+}
+```
+
+Each plugin's `source` directory should contain a `skills/` subdirectory with individual skills.
+
+### simple
+
+Repositories with a top-level `skills/` directory containing skill subdirectories, each with a `SKILL.md` file:
+
+```
+repo/
+└── skills/
+    ├── pdf/
+    │   └── SKILL.md
+    └── web-search/
+        └── SKILL.md
+```
+
+## SKILL.md Format
+
+Each skill has a `SKILL.md` file with YAML frontmatter:
+
+```markdown
+---
+name: pdf
+description: PDF manipulation toolkit for reading and extracting content
+---
+
+# PDF Skill
+
+Instructions for using this skill...
+```
+
+## Discovery Process
+
+When you run `agpm source discover` or `agpm add`:
+
+1. Repository is cloned to `~/.agpm/repos/`
+2. AGPM checks for `.claude-plugin/marketplace.json`
+3. If not found, checks for `skills/` directory
+4. Scans for `SKILL.md` files
+5. Parses metadata from frontmatter
+
+## See Also
+
+- [Sources](/docs/concepts/sources) - Source repository formats
+- [source discover](/docs/commands/source) - Discovery command
