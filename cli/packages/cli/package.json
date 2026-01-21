@@ -3,9 +3,11 @@
   "version": "0.0.1",
   "type": "module",
   "bin": {
-    "agpm": "./src/index.ts"
+    "agpm": "./dist/index.js"
   },
+  "files": ["dist"],
   "scripts": {
+    "build": "tsc",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -14,6 +16,7 @@
     "citty": "^0.1.6"
   },
   "devDependencies": {
-    "tsx": "^4.19.4"
+    "tsx": "^4.19.4",
+    "typescript": "^5.7.0"
   }
 }
