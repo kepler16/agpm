@@ -6,7 +6,7 @@ import {
   ensureRepo,
   getRepoPath,
   detectFormat,
-  discoverArtifacts,
+  discover,
   type Source,
 } from "@agpm/core";
 
@@ -122,7 +122,7 @@ const removeCommand = defineCommand({
 const discoverCommand = defineCommand({
   meta: {
     name: "discover",
-    description: "Discover artifacts in a source",
+    description: "Discover artifacts and collections in a source",
   },
   args: {
     source: {
@@ -156,26 +156,44 @@ const discoverCommand = defineCommand({
       return;
     }
 
-    // Discover artifacts (use source's explicit format if set)
-    const artifacts = await discoverArtifacts(repoPath, source.subdir, source.format);
+    // Discover artifacts and collections
+    const result = await discover(repoPath, source.subdir, source.format);
 
-    if (artifacts.length === 0) {
-      console.log("No artifacts found");
+    if (result.artifacts.length === 0 && result.collections.length === 0) {
+      console.log("No artifacts or collections found");
       return;
     }
 
-    console.log(`Found ${artifacts.length} artifact(s):\n`);
-    for (const artifact of artifacts) {
-      console.log(`  ${artifact.name}`);
-      if (artifact.description) {
-        // Truncate long descriptions
-        const desc = artifact.description.length > 80
-          ? artifact.description.slice(0, 77) + "..."
-          : artifact.description;
-        console.log(`    ${desc}`);
+    // Show collections first
+    if (result.collections.length > 0) {
+      console.log(`Found ${result.collections.length} collection(s):\n`);
+      for (const collection of result.collections) {
+        console.log(`  ${collection.name}`);
+        if (collection.description) {
+          const desc = collection.description.length > 80
+            ? collection.description.slice(0, 77) + "..."
+            : collection.description;
+          console.log(`    ${desc}`);
+        }
+        console.log(`    artifacts: ${collection.artifacts.join(", ")}`);
+        console.log();
       }
-      console.log(`    path: ${artifact.path}`);
-      console.log();
+    }
+
+    // Show artifacts
+    if (result.artifacts.length > 0) {
+      console.log(`Found ${result.artifacts.length} artifact(s):\n`);
+      for (const artifact of result.artifacts) {
+        console.log(`  ${artifact.name}`);
+        if (artifact.description) {
+          const desc = artifact.description.length > 80
+            ? artifact.description.slice(0, 77) + "..."
+            : artifact.description;
+          console.log(`    ${desc}`);
+        }
+        console.log(`    path: ${artifact.path}`);
+        console.log();
+      }
     }
   },
 });

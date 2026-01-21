@@ -24,6 +24,28 @@ export interface DiscoveredArtifact {
   metadata?: Record<string, unknown>;
 }
 
+export interface DiscoveredCollection {
+  /** Collection name (e.g., plugin name) */
+  name: string;
+  /** Description */
+  description?: string;
+  /** Names of artifacts in this collection */
+  artifacts: string[];
+  /** Path to collection root relative to repo */
+  path: string;
+  /** Additional metadata */
+  metadata?: Record<string, unknown>;
+}
+
+export interface DiscoveryResult {
+  /** Individual artifacts discovered */
+  artifacts: DiscoveredArtifact[];
+  /** Collections (groups of artifacts) discovered */
+  collections: DiscoveredCollection[];
+  /** Format that was detected/used */
+  format: RepoFormat;
+}
+
 /** Marketplace manifest (.claude-plugin/marketplace.json) - multiple plugins */
 export interface ClaudeMarketplaceManifest {
   name: string;
@@ -111,17 +133,17 @@ export async function detectFormat(repoPath: string): Promise<RepoFormat> {
 // ============================================================================
 
 /**
- * Discover all artifacts in a repository.
+ * Discover all artifacts and collections in a repository.
  *
  * @param repoPath - Path to the repository
  * @param subdir - Optional subdirectory to search within
  * @param explicitFormat - If provided, use this format instead of auto-detecting
  */
-export async function discoverArtifacts(
+export async function discover(
   repoPath: string,
   subdir?: string,
   explicitFormat?: SourceFormat
-): Promise<DiscoveredArtifact[]> {
+): Promise<DiscoveryResult> {
   const searchPath = subdir ? join(repoPath, subdir) : repoPath;
 
   // Use explicit format if provided and not "auto", otherwise detect
@@ -143,6 +165,18 @@ export async function discoverArtifacts(
 }
 
 /**
+ * @deprecated Use `discover` instead. This is kept for backwards compatibility.
+ */
+export async function discoverArtifacts(
+  repoPath: string,
+  subdir?: string,
+  explicitFormat?: SourceFormat
+): Promise<DiscoveredArtifact[]> {
+  const result = await discover(repoPath, subdir, explicitFormat);
+  return result.artifacts;
+}
+
+/**
  * Discover artifacts from Claude marketplace manifest.
  *
  * Marketplace format (.claude-plugin/marketplace.json):
@@ -150,20 +184,23 @@ export async function discoverArtifacts(
  * - Each plugin has `source` pointing to a plugin directory
  * - That directory contains a `skills/` subdirectory with skill folders
  * - Each skill folder has SKILL.md
+ * - Each plugin becomes a collection containing its artifacts
  */
-async function discoverClaudeMarketplace(repoPath: string): Promise<DiscoveredArtifact[]> {
+async function discoverClaudeMarketplace(repoPath: string): Promise<DiscoveryResult> {
   const manifestPath = join(repoPath, ".claude-plugin", "marketplace.json");
   const artifacts: DiscoveredArtifact[] = [];
+  const collections: DiscoveredCollection[] = [];
   const seenPaths = new Set<string>();
 
   const content = await readFile(manifestPath, "utf-8");
   const manifest: ClaudeMarketplaceManifest = JSON.parse(content);
 
   for (const plugin of manifest.plugins) {
+    const collectionArtifacts: string[] = [];
+    const sourcePath = (typeof plugin.source === "string" ? plugin.source : "").replace(/^\.\//, "");
+
     // Primary method: source points to plugin directory with skills/ inside
     if (plugin.source) {
-      // Handle source as string or object with source property
-      const sourcePath = (typeof plugin.source === "string" ? plugin.source : "").replace(/^\.\//, "");
       const pluginDir = sourcePath ? join(repoPath, sourcePath) : repoPath;
       const skillsDir = join(pluginDir, "skills");
 
@@ -181,9 +218,10 @@ async function discoverClaudeMarketplace(repoPath: string): Promise<DiscoveredAr
           seenPaths.add(relativePath);
 
           const metadata = await parseSkillMd(skillPath);
+          const artifactName = metadata?.name ?? entry.name;
 
           artifacts.push({
-            name: metadata?.name ?? entry.name,
+            name: artifactName,
             description: metadata?.description ?? plugin.description,
             type: "skill",
             path: relativePath,
@@ -191,6 +229,8 @@ async function discoverClaudeMarketplace(repoPath: string): Promise<DiscoveredAr
             format: "claude-marketplace",
             metadata: metadata as Record<string, unknown> | undefined,
           });
+
+          collectionArtifacts.push(artifactName);
         }
       } catch {
         // skills/ directory doesn't exist in plugin source dir
@@ -208,9 +248,10 @@ async function discoverClaudeMarketplace(repoPath: string): Promise<DiscoveredAr
 
         const absolutePath = join(repoPath, normalizedPath);
         const metadata = await parseSkillMd(absolutePath);
+        const artifactName = metadata?.name ?? basename(normalizedPath);
 
         artifacts.push({
-          name: metadata?.name ?? basename(normalizedPath),
+          name: artifactName,
           description: metadata?.description ?? plugin.description,
           type: "skill",
           path: normalizedPath,
@@ -218,11 +259,23 @@ async function discoverClaudeMarketplace(repoPath: string): Promise<DiscoveredAr
           format: "claude-marketplace",
           metadata: metadata as Record<string, unknown> | undefined,
         });
+
+        collectionArtifacts.push(artifactName);
       }
+    }
+
+    // Create collection for this plugin
+    if (collectionArtifacts.length > 0) {
+      collections.push({
+        name: plugin.name,
+        description: plugin.description,
+        artifacts: collectionArtifacts,
+        path: sourcePath || ".",
+      });
     }
   }
 
-  return artifacts;
+  return { artifacts, collections, format: "claude-marketplace" };
 }
 
 /**
@@ -232,8 +285,9 @@ async function discoverClaudeMarketplace(repoPath: string): Promise<DiscoveredAr
  * - Single plugin with optional `skills` field (string or array of paths)
  * - Default `skills/` directory is always searched
  * - Each skill is a directory with SKILL.md
+ * - The plugin itself is the collection containing all artifacts
  */
-async function discoverClaudePlugin(repoPath: string): Promise<DiscoveredArtifact[]> {
+async function discoverClaudePlugin(repoPath: string): Promise<DiscoveryResult> {
   const manifestPath = join(repoPath, ".claude-plugin", "plugin.json");
   const artifacts: DiscoveredArtifact[] = [];
   const seenPaths = new Set<string>();
@@ -288,13 +342,30 @@ async function discoverClaudePlugin(repoPath: string): Promise<DiscoveredArtifac
     }
   }
 
-  return artifacts;
+  // The plugin itself is the single collection
+  const collection: DiscoveredCollection = {
+    name: manifest.name,
+    description: manifest.description,
+    artifacts: artifacts.map((a) => a.name),
+    path: ".",
+    metadata: {
+      version: manifest.version,
+      author: manifest.author,
+    },
+  };
+
+  return {
+    artifacts,
+    collections: artifacts.length > 0 ? [collection] : [],
+    format: "claude-plugin",
+  };
 }
 
 /**
  * Discover artifacts from simple format (skills/ directory).
+ * Simple format has no collections - just raw artifacts.
  */
-async function discoverSimpleFormat(repoPath: string): Promise<DiscoveredArtifact[]> {
+async function discoverSimpleFormat(repoPath: string): Promise<DiscoveryResult> {
   const skillsDir = join(repoPath, "skills");
   const artifacts: DiscoveredArtifact[] = [];
 
@@ -336,7 +407,8 @@ async function discoverSimpleFormat(repoPath: string): Promise<DiscoveredArtifac
     // skills/ directory doesn't exist or can't be read
   }
 
-  return artifacts;
+  // Simple format has no collections
+  return { artifacts, collections: [], format: "simple" };
 }
 
 /**

@@ -29,6 +29,9 @@ export interface AgpmConfig {
   $schema?: string;
   targets: Record<string, TargetConfig>;
   sources: Source[];
+  /** Collection references (expand to their artifacts at install time) */
+  collections: string[];
+  /** Individual artifact references */
   artifacts: string[];
 }
 
@@ -64,6 +67,7 @@ export const DEFAULT_CONFIG: AgpmConfig = {
   $schema: CONFIG_SCHEMA_URL,
   targets: {},
   sources: [],
+  collections: [],
   artifacts: [],
 };
 
@@ -94,7 +98,11 @@ export async function loadConfig(dir: string): Promise<AgpmConfig> {
       );
     }
 
-    return config;
+    // Provide defaults for optional fields
+    return {
+      ...config,
+      collections: config.collections ?? [],
+    };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { ...DEFAULT_CONFIG };

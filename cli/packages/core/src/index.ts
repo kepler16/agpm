@@ -39,10 +39,13 @@ export {
 // Discovery
 export {
   type DiscoveredArtifact,
+  type DiscoveredCollection,
+  type DiscoveryResult,
   type ClaudeMarketplaceManifest,
   type ClaudePluginManifest,
   type SkillMetadata,
   type RepoFormat,
   detectFormat,
+  discover,
   discoverArtifacts,
 } from "./discovery.js";

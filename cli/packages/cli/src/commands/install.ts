@@ -8,9 +8,10 @@ import {
   parseSourceString,
   ensureRepo,
   getRepoPath,
-  discoverArtifacts,
+  discover,
   resolveRef,
   type Source,
+  type DiscoveredArtifact,
 } from "@agpm/core";
 
 // Default target directories for different AI tools
@@ -24,15 +25,15 @@ function findSource(sources: Source[], name: string): Source | undefined {
 }
 
 /**
- * Parse artifact reference (source/artifact-name) into source name and artifact name.
+ * Parse reference (source/name) into source name and item name.
  */
-function parseArtifactRef(ref: string): { sourceName: string; artifactName: string } | null {
+function parseRef(ref: string): { sourceName: string; itemName: string } | null {
   const lastSlash = ref.lastIndexOf("/");
   if (lastSlash === -1) return null;
 
   return {
     sourceName: ref.slice(0, lastSlash),
-    artifactName: ref.slice(lastSlash + 1),
+    itemName: ref.slice(lastSlash + 1),
   };
 }
 
@@ -54,30 +55,73 @@ export const installCommand = defineCommand({
     const config = await loadConfig(cwd);
     const lock = await loadLock(cwd);
 
-    if (config.artifacts.length === 0) {
-      console.log("No artifacts configured.");
-      console.log("\nAdd artifacts with: agpm add <source> <artifact>");
+    if (config.collections.length === 0 && config.artifacts.length === 0) {
+      console.log("No artifacts or collections configured.");
+      console.log("\nAdd artifacts with: agpm add <source> <name>");
       return;
     }
 
-    console.log(`Installing ${config.artifacts.length} artifact(s)...\n`);
+    // Build list of artifact refs to install (expand collections)
+    const artifactRefs: string[] = [...config.artifacts];
+
+    // Expand collections to their artifacts
+    for (const collectionRef of config.collections) {
+      const parsed = parseRef(collectionRef);
+      if (!parsed) {
+        console.log(`Invalid collection reference: ${collectionRef}`);
+        continue;
+      }
+
+      const { sourceName, itemName: collectionName } = parsed;
+
+      let source = findSource(config.sources, sourceName);
+      if (!source) {
+        try {
+          source = parseSourceString(sourceName);
+        } catch {
+          console.log(`Source not found: ${sourceName}`);
+          continue;
+        }
+      }
+
+      // Discover to find the collection
+      await ensureRepo(source);
+      const repoPath = getRepoPath(source);
+      const result = await discover(repoPath, source.subdir, source.format);
+
+      const collection = result.collections.find((c) => c.name === collectionName);
+      if (!collection) {
+        console.log(`Collection not found: ${collectionName}`);
+        continue;
+      }
+
+      // Add each artifact from the collection
+      for (const artifactName of collection.artifacts) {
+        const artifactRef = `${sourceName}/${artifactName}`;
+        if (!artifactRefs.includes(artifactRef)) {
+          artifactRefs.push(artifactRef);
+        }
+      }
+    }
+
+    console.log(`Installing ${artifactRefs.length} artifact(s)...\n`);
 
     let updated = false;
 
-    for (const artifactRef of config.artifacts) {
-      // Parse artifact reference: source-name/artifact-name
-      const parsed = parseArtifactRef(artifactRef);
+    // Cache discovered artifacts per source to avoid repeated discovery
+    const discoveryCache = new Map<string, DiscoveredArtifact[]>();
+
+    for (const artifactRef of artifactRefs) {
+      const parsed = parseRef(artifactRef);
       if (!parsed) {
         console.log(`Invalid artifact reference: ${artifactRef}`);
         continue;
       }
 
-      const { sourceName, artifactName } = parsed;
+      const { sourceName, itemName: artifactName } = parsed;
 
-      // Look up source from config, fallback to parsing as new
       let source = findSource(config.sources, sourceName);
       if (!source) {
-        // Source not in config, try to parse it
         try {
           source = parseSourceString(sourceName);
         } catch {
@@ -90,28 +134,30 @@ export const installCommand = defineCommand({
       let lockEntry = lock.artifacts[artifactRef];
 
       if (!lockEntry || args.force) {
-        // Need to resolve
         console.log(`Resolving ${artifactRef}...`);
 
-        // Ensure repo is cloned
         await ensureRepo(source);
         const repoPath = getRepoPath(source);
 
-        // Discover artifacts to get the path (use source's explicit format if set)
-        const artifacts = await discoverArtifacts(repoPath, source.subdir, source.format);
-        const artifact = artifacts.find((a) => a.name === artifactName);
+        // Get or cache discovered artifacts
+        let artifacts = discoveryCache.get(sourceName);
+        if (!artifacts) {
+          const result = await discover(repoPath, source.subdir, source.format);
+          artifacts = result.artifacts;
+          discoveryCache.set(sourceName, artifacts);
+        }
 
+        const artifact = artifacts.find((a) => a.name === artifactName);
         if (!artifact) {
           console.log(`  Artifact not found: ${artifactName}`);
           continue;
         }
 
-        // Resolve SHA
         const sha = await resolveRef(repoPath, "HEAD");
 
         lockEntry = {
           sha,
-          integrity: `sha256-${sha.slice(0, 16)}`, // Placeholder integrity
+          integrity: `sha256-${sha.slice(0, 16)}`,
           path: artifact.path,
           metadata: {
             name: artifact.name,
@@ -131,15 +177,9 @@ export const installCommand = defineCommand({
         const targetPath = join(cwd, targetDir, artifactName);
 
         try {
-          // Remove existing
           await rm(targetPath, { recursive: true, force: true });
-
-          // Create parent directory
           await mkdir(join(cwd, targetDir), { recursive: true });
-
-          // Copy skill directory
           await cp(sourcePath, targetPath, { recursive: true });
-
           console.log(`  Installed: ${targetDir}/${artifactName}`);
         } catch (error) {
           console.log(
@@ -149,7 +189,6 @@ export const installCommand = defineCommand({
       }
     }
 
-    // Save lock file if updated
     if (updated) {
       await saveLock(cwd, lock);
       console.log("\nUpdated agpm-lock.json");

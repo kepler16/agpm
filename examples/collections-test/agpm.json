@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agpm.dev/schemas/agpm.json",
+  "targets": {},
+  "sources": [
+    {
+      "name": "anthropics/skills",
+      "url": "https://github.com/anthropics/skills.git"
+    }
+  ],
+  "artifacts": [],
+  "collections": [
+    "anthropics/skills/document-skills"
+  ]
+}

@@ -5,8 +5,9 @@ import {
   parseSourceString,
   ensureRepo,
   getRepoPath,
-  discoverArtifacts,
+  discover,
   type DiscoveredArtifact,
+  type DiscoveredCollection,
   type Source,
 } from "@agpm/core";
 
@@ -20,7 +21,7 @@ function findSource(sources: Source[], name: string): Source | undefined {
 export const addCommand = defineCommand({
   meta: {
     name: "add",
-    description: "Add an artifact to the project",
+    description: "Add an artifact or collection to the project",
   },
   args: {
     source: {
@@ -28,9 +29,9 @@ export const addCommand = defineCommand({
       description: "Source containing the artifact (owner/repo or URL)",
       required: true,
     },
-    artifact: {
+    name: {
       type: "positional",
-      description: "Artifact name to add (optional if source has only one)",
+      description: "Artifact or collection name to add",
       required: false,
     },
   },
@@ -46,61 +47,11 @@ export const addCommand = defineCommand({
     await ensureRepo(source);
     const repoPath = getRepoPath(source);
 
-    // Discover available artifacts (use source's explicit format if set)
-    const artifacts = await discoverArtifacts(repoPath, source.subdir, source.format);
+    // Discover available artifacts and collections
+    const result = await discover(repoPath, source.subdir, source.format);
 
-    if (artifacts.length === 0) {
-      console.log("No artifacts found in source");
-      return;
-    }
-
-    let artifact: DiscoveredArtifact | undefined;
-
-    if (args.artifact) {
-      // Find specific artifact
-      artifact = artifacts.find(
-        (a) =>
-          a.name === args.artifact ||
-          a.path === args.artifact ||
-          a.path.endsWith(`/${args.artifact}`)
-      );
-
-      if (!artifact) {
-        console.log(`Artifact "${args.artifact}" not found in source.`);
-        console.log("\nAvailable artifacts:");
-        for (const a of artifacts) {
-          console.log(`  - ${a.name}`);
-        }
-        return;
-      }
-    } else if (artifacts.length === 1) {
-      // Auto-select if only one artifact
-      artifact = artifacts[0];
-    } else {
-      // Multiple artifacts, must specify
-      console.log("Multiple artifacts found. Please specify which one to add:");
-      console.log();
-      for (const a of artifacts) {
-        console.log(`  ${a.name}`);
-        if (a.description) {
-          const desc =
-            a.description.length > 60
-              ? a.description.slice(0, 57) + "..."
-              : a.description;
-          console.log(`    ${desc}`);
-        }
-      }
-      console.log();
-      console.log(`Usage: agpm add ${args.source} <artifact-name>`);
-      return;
-    }
-
-    // Build artifact reference
-    const artifactRef = `${source.name}/${artifact.name}`;
-
-    // Check if already added
-    if (config.artifacts.includes(artifactRef)) {
-      console.log(`Artifact already configured: ${artifactRef}`);
+    if (result.artifacts.length === 0 && result.collections.length === 0) {
+      console.log("No artifacts or collections found in source");
       return;
     }
 
@@ -109,15 +60,133 @@ export const addCommand = defineCommand({
       config.sources.push(source);
     }
 
-    // Add artifact
-    config.artifacts.push(artifactRef);
-    await saveConfig(cwd, config);
+    if (args.name) {
+      // Check if it's a collection first
+      const collection = result.collections.find(
+        (c) => c.name === args.name
+      );
 
-    console.log(`Added: ${artifactRef}`);
-    if (artifact.description) {
-      console.log(`  ${artifact.description}`);
+      if (collection) {
+        return addCollection(config, source, collection, cwd);
+      }
+
+      // Otherwise, find specific artifact
+      const artifact = result.artifacts.find(
+        (a) =>
+          a.name === args.name ||
+          a.path === args.name ||
+          a.path.endsWith(`/${args.name}`)
+      );
+
+      if (artifact) {
+        return addArtifact(config, source, artifact, cwd);
+      }
+
+      // Not found
+      console.log(`"${args.name}" not found in source.`);
+      showAvailable(result.collections, result.artifacts, args.source);
+      return;
     }
-    console.log();
-    console.log("Run `agpm install` to install the artifact.");
+
+    // No name specified - auto-select or show options
+    if (result.collections.length === 1 && result.artifacts.length === 0) {
+      // Only one collection, auto-add it
+      return addCollection(config, source, result.collections[0], cwd);
+    }
+
+    if (result.artifacts.length === 1 && result.collections.length === 0) {
+      // Only one artifact, auto-add it
+      return addArtifact(config, source, result.artifacts[0], cwd);
+    }
+
+    // Multiple options, must specify
+    console.log("Multiple items found. Please specify which one to add:\n");
+    showAvailable(result.collections, result.artifacts, args.source);
   },
 });
+
+async function addCollection(
+  config: Awaited<ReturnType<typeof loadConfig>>,
+  source: Source,
+  collection: DiscoveredCollection,
+  cwd: string
+) {
+  const collectionRef = `${source.name}/${collection.name}`;
+
+  if (config.collections.includes(collectionRef)) {
+    console.log(`Collection already configured: ${collectionRef}`);
+    return;
+  }
+
+  config.collections.push(collectionRef);
+  await saveConfig(cwd, config);
+
+  console.log(`Added collection: ${collectionRef}`);
+  if (collection.description) {
+    console.log(`  ${collection.description}`);
+  }
+  console.log(`  Contains: ${collection.artifacts.join(", ")}`);
+  console.log();
+  console.log("Run `agpm install` to install the collection.");
+}
+
+async function addArtifact(
+  config: Awaited<ReturnType<typeof loadConfig>>,
+  source: Source,
+  artifact: DiscoveredArtifact,
+  cwd: string
+) {
+  const artifactRef = `${source.name}/${artifact.name}`;
+
+  if (config.artifacts.includes(artifactRef)) {
+    console.log(`Artifact already configured: ${artifactRef}`);
+    return;
+  }
+
+  config.artifacts.push(artifactRef);
+  await saveConfig(cwd, config);
+
+  console.log(`Added: ${artifactRef}`);
+  if (artifact.description) {
+    console.log(`  ${artifact.description}`);
+  }
+  console.log();
+  console.log("Run `agpm install` to install the artifact.");
+}
+
+function showAvailable(
+  collections: DiscoveredCollection[],
+  artifacts: DiscoveredArtifact[],
+  sourceArg: string
+) {
+  if (collections.length > 0) {
+    console.log("Collections:");
+    for (const c of collections) {
+      console.log(`  ${c.name}`);
+      if (c.description) {
+        const desc = c.description.length > 60
+          ? c.description.slice(0, 57) + "..."
+          : c.description;
+        console.log(`    ${desc}`);
+      }
+      console.log(`    (${c.artifacts.length} artifacts)`);
+    }
+    console.log();
+  }
+
+  if (artifacts.length > 0) {
+    console.log("Artifacts:");
+    for (const a of artifacts) {
+      console.log(`  ${a.name}`);
+      if (a.description) {
+        const desc = a.description.length > 60
+          ? a.description.slice(0, 57) + "..."
+          : a.description;
+        console.log(`    ${desc}`);
+      }
+    }
+    console.log();
+  }
+
+  console.log(`Usage: agpm add ${sourceArg} <name>`);
+}

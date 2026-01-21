@@ -54,9 +54,21 @@
         "additionalProperties": false
       }
     },
+    "collections": {
+      "type": "array",
+      "description": "Collection references (expand to their artifacts at install time)",
+      "items": {
+        "type": "string",
+        "description": "Collection reference in format: source/collection-name",
+        "examples": [
+          "anthropics/skills/office-suite",
+          "my-org/plugins/productivity"
+        ]
+      }
+    },
     "artifacts": {
       "type": "array",
-      "description": "Enabled artifacts to install",
+      "description": "Individual artifact references to install",
       "items": {
         "type": "string",
         "description": "Artifact reference in format: source/name[@version]",

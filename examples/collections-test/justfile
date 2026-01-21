@@ -1,0 +1,15 @@
+# Run the AGPM CLI with any arguments
+agpm *args:
+    pnpx tsx ../../cli/packages/cli/src/index.ts {{args}}
+
+# Clean up installed artifacts and config
+clean:
+    rm -rf .claude .opencode .codex agpm.json agpm-lock.json
+
+# Demo: Add and install the document-skills collection
+demo:
+    @just clean
+    @echo '{"$schema":"https://agpm.dev/schemas/agpm.json","targets":{},"sources":[],"artifacts":[]}' > agpm.json
+    @just agpm add anthropics/skills document-skills
+    @just agpm install
+    @just agpm list

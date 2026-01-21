@@ -6,9 +6,10 @@ import {
   parseSourceString,
   ensureRepo,
   getRepoPath,
-  discoverArtifacts,
+  discover,
   resolveRef,
   type Source,
+  type DiscoveredArtifact,
 } from "@agpm/core";
 
 /**
@@ -110,8 +111,8 @@ export const updateCommand = defineCommand({
       }
 
       // Discover to get path (use source's explicit format if set)
-      const artifacts = await discoverArtifacts(repoPath, source.subdir, source.format);
-      const artifact = artifacts.find((a) => a.name === artifactName);
+      const result = await discover(repoPath, source.subdir, source.format);
+      const artifact = result.artifacts.find((a: DiscoveredArtifact) => a.name === artifactName);
 
       if (!artifact) {
         console.log(`  Artifact not found in source`);
