@@ -199,8 +199,33 @@ async function discoverClaudeMarketplace(repoPath: string): Promise<DiscoveryRes
     const collectionArtifacts: string[] = [];
     const sourcePath = (typeof plugin.source === "string" ? plugin.source : "").replace(/^\.\//, "");
 
-    // Primary method: source points to plugin directory with skills/ inside
-    if (plugin.source) {
+    // If plugin has explicit skills array, use ONLY those (not discovery)
+    if (plugin.skills && plugin.skills.length > 0) {
+      for (const skillPath of plugin.skills) {
+        const normalizedPath = skillPath.replace(/^\.\//, "");
+
+        // Skip duplicates
+        if (seenPaths.has(normalizedPath)) continue;
+        seenPaths.add(normalizedPath);
+
+        const absolutePath = join(repoPath, normalizedPath);
+        const metadata = await parseSkillMd(absolutePath);
+        const artifactName = metadata?.name ?? basename(normalizedPath);
+
+        artifacts.push({
+          name: artifactName,
+          description: metadata?.description ?? plugin.description,
+          type: "skill",
+          path: normalizedPath,
+          absolutePath,
+          format: "claude-marketplace",
+          metadata: metadata as Record<string, unknown> | undefined,
+        });
+
+        collectionArtifacts.push(artifactName);
+      }
+    } else if (plugin.source) {
+      // No explicit skills - discover from source/skills/ directory
       const pluginDir = sourcePath ? join(repoPath, sourcePath) : repoPath;
       const skillsDir = join(pluginDir, "skills");
 
@@ -234,33 +259,6 @@ async function discoverClaudeMarketplace(repoPath: string): Promise<DiscoveryRes
         }
       } catch {
         // skills/ directory doesn't exist in plugin source dir
-      }
-    }
-
-    // Fallback: explicit skills array (convenience format used by some repos)
-    if (plugin.skills && plugin.skills.length > 0) {
-      for (const skillPath of plugin.skills) {
-        const normalizedPath = skillPath.replace(/^\.\//, "");
-
-        // Skip duplicates
-        if (seenPaths.has(normalizedPath)) continue;
-        seenPaths.add(normalizedPath);
-
-        const absolutePath = join(repoPath, normalizedPath);
-        const metadata = await parseSkillMd(absolutePath);
-        const artifactName = metadata?.name ?? basename(normalizedPath);
-
-        artifacts.push({
-          name: artifactName,
-          description: metadata?.description ?? plugin.description,
-          type: "skill",
-          path: normalizedPath,
-          absolutePath,
-          format: "claude-marketplace",
-          metadata: metadata as Record<string, unknown> | undefined,
-        });
-
-        collectionArtifacts.push(artifactName);
       }
     }
 
