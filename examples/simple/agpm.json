@@ -1,0 +1,10 @@
+{
+  "$schema": "https://agpm.dev/schemas/agpm.json",
+  "targets": {},
+  "sources": [
+    "anthropics/skills"
+  ],
+  "artifacts": [
+    "anthropics/skills/pdf"
+  ]
+}

@@ -1,1 +1,41 @@
-/target
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Rust
+/target/
+rust/target/
+
+# pnpm
+.pnpm-debug.log
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# AGPM local storage
+.agpm/
+
+# Claude Code local config (user-specific)
+/.claude/
+
+# Example installed artifacts (not config)
+examples/**/.claude/
+examples/**/.opencode/
+examples/**/.codex/
+examples/**/.cursor/

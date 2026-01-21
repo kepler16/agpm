@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agpm.dev/schemas/agpm.json",
+  "title": "AGPM Configuration",
+  "description": "Configuration file for the Agent Package Manager",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "targets": {
+      "type": "object",
+      "description": "AI tools to install artifacts to",
+      "additionalProperties": {
+        "type": "object",
+        "description": "Target-specific configuration options",
+        "properties": {},
+        "additionalProperties": true
+      },
+      "examples": [
+        {
+          "claude": {},
+          "opencode": {}
+        }
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "description": "Git repositories or local paths containing artifacts",
+      "items": {
+        "type": "string",
+        "description": "Source reference (owner/repo, URL, or local path). Use # for subpaths.",
+        "examples": [
+          "anthropics/skills",
+          "anthropics/skills#experimental",
+          "./local-skills"
+        ]
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "description": "Enabled artifacts to install",
+      "items": {
+        "type": "string",
+        "description": "Artifact reference in format: source/name[@version]",
+        "examples": [
+          "anthropics/skills/pdf",
+          "anthropics/skills/pdf@1.0.0",
+          "anthropics/skills#experimental/new-skill@latest"
+        ]
+      }
+    }
+  },
+  "required": ["targets", "sources", "artifacts"],
+  "additionalProperties": false
+}

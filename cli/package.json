@@ -1,0 +1,9 @@
+{
+  "name": "skills-cli",
+  "private": true,
+  "packageManager": "pnpm@10.8.0",
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "typescript": "^5.9.3"
+  }
+}

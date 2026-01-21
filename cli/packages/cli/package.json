@@ -1,0 +1,19 @@
+{
+  "name": "@agpm/cli",
+  "version": "0.0.1",
+  "type": "module",
+  "bin": {
+    "agpm": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agpm/core": "workspace:*",
+    "citty": "^0.1.6"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4"
+  }
+}
