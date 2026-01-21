@@ -11,13 +11,13 @@ const features = [
     icon: Package,
     title: "Multi-Target Support",
     description:
-      "Install artifacts to Claude, OpenCode, Codex, and other AI tools simultaneously. One config, multiple destinations.",
+      "Install artifacts to Claude Code, OpenCode, Codex, and other AI tools simultaneously. One config, multiple destinations.",
   },
   {
     icon: GitBranch,
-    title: "Git-Backed Sources",
+    title: "Lock File & Versioning",
     description:
-      "Version-controlled artifacts with SHA pinning. Reproducible installations with integrity verification.",
+      "Pin artifacts to exact commits with a lock file. Reproducible installations across your team with integrity verification.",
   },
   {
     icon: Layers,

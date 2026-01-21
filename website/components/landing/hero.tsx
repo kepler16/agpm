@@ -15,8 +15,8 @@ export function Hero() {
             </span>
           </h1>
           <p className="text-xl text-muted-foreground md:text-2xl max-w-2xl mx-auto">
-            Manage skills, commands, and hooks across Claude, OpenCode, Codex, and more.
-            Version-controlled artifacts with reproducible installations.
+            Manage skills, commands, and hooks across Claude Code, OpenCode, Codex, and more.
+            Lock file ensures reproducible installations across your team.
           </p>
         </div>
 

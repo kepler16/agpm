@@ -17,7 +17,7 @@ const steps = [
     icon: Zap,
     title: "3. Install & Use",
     description:
-      "Install artifacts to your project. They're copied to the right directories for Claude, OpenCode, and other tools.",
+      "Install artifacts to your project. They're copied to the right directories for Claude Code, OpenCode, and other tools.",
   },
 ];
 
