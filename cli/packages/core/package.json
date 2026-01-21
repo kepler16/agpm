@@ -1,14 +1,26 @@
 {
   "name": "@agpm/core",
-  "version": "0.0.2",
+  "version": "0.1.0",
+  "description": "Core library for AGPM - config, git, discovery, caching, validation",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kepler16/agpm.git",
+    "directory": "cli/packages/core"
+  },
+  "homepage": "https://agpm.dev",
+  "bugs": {
+    "url": "https://github.com/kepler16/agpm/issues"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit"

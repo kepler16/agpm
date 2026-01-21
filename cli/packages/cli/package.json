@@ -1,7 +1,17 @@
 {
   "name": "@agpm/cli",
-  "version": "0.0.2",
+  "version": "0.1.0",
+  "description": "CLI for AGPM - Agent Package Manager for AI coding tool artifacts",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kepler16/agpm.git",
+    "directory": "cli/packages/cli"
+  },
+  "homepage": "https://agpm.dev",
+  "bugs": {
+    "url": "https://github.com/kepler16/agpm/issues"
+  },
   "bin": {
     "agpm": "dist/index.js"
   },
