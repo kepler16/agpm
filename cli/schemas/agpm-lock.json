@@ -35,6 +35,10 @@
             "type": "string",
             "description": "Relative path within the repository"
           },
+          "ref": {
+            "type": "string",
+            "description": "Original version ref (tag, branch, or SHA) if specified"
+          },
           "metadata": {
             "type": "object",
             "description": "Discovered artifact metadata",
@@ -52,7 +56,7 @@
             "additionalProperties": true
           }
         },
-        "required": ["sha", "path", "metadata"],
+        "required": ["sha", "integrity", "path", "metadata"],
         "additionalProperties": false
       }
     }

@@ -1,0 +1,95 @@
+# Commands
+
+AGPM provides a set of commands for managing AI tool artifacts. Here's an overview of all available commands.
+
+## Artifact Management
+
+| Command | Description |
+|---------|-------------|
+| `agpm add <source> [artifact]` | Add an artifact to your project |
+| `agpm install` | Install all configured artifacts |
+| `agpm sync` | Alias for `install` |
+| `agpm list` | Show configured artifacts and their status |
+| `agpm remove <artifact>` | Remove an artifact from your project |
+| `agpm update [artifact]` | Update lock file to latest SHAs |
+
+## Source Management
+
+| Command | Description |
+|---------|-------------|
+| `agpm source add <repo>` | Add a source repository |
+| `agpm source list` | List configured sources |
+| `agpm source remove <repo>` | Remove a source |
+| `agpm source discover <repo>` | Show available artifacts in a source |
+
+## Command Details
+
+### agpm add
+
+Add an artifact to your project configuration.
+
+```bash
+# Add from a source
+agpm add anthropics/skills pdf
+
+# Add with version
+agpm add anthropics/skills pdf@1.0.0
+```
+
+### agpm install
+
+Install all configured artifacts to target directories.
+
+```bash
+agpm install
+```
+
+This command:
+1. Reads your `agpm.json` configuration
+2. Resolves artifact versions (creates/updates `agpm-lock.json`)
+3. Copies artifacts to target directories (`.claude/skills/`, `.opencode/skills/`, etc.)
+
+### agpm list
+
+Display all configured artifacts and their status.
+
+```bash
+agpm list
+```
+
+### agpm update
+
+Update the lock file with the latest versions from sources.
+
+```bash
+# Update all artifacts
+agpm update
+
+# Update a specific artifact
+agpm update anthropics/skills/pdf
+```
+
+### agpm source add
+
+Add a new source repository.
+
+```bash
+# GitHub shorthand
+agpm source add anthropics/skills
+
+# With subpath
+agpm source add owner/repo#subdirectory
+
+# Full URL
+agpm source add https://github.com/owner/repo
+```
+
+### agpm source discover
+
+Discover available artifacts in a source.
+
+```bash
+agpm source discover anthropics/skills
+```
+
+This shows all artifacts, their descriptions, and metadata from the repository.

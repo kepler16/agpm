@@ -1,13 +1,16 @@
 import { defineCommand } from "citty";
+import { join } from "node:path";
 import {
   loadConfig,
   loadLock,
   saveLock,
   parseSourceString,
+  parseArtifactRef,
   ensureRepo,
   getRepoPath,
   discover,
-  resolveRef,
+  checkoutToCache,
+  hashDirectory,
   type Source,
   type DiscoveredArtifact,
 } from "@agpm/core";
@@ -17,19 +20,6 @@ import {
  */
 function findSource(sources: Source[], name: string): Source | undefined {
   return sources.find((s) => s.name === name);
-}
-
-/**
- * Parse artifact reference (source/artifact-name) into source name and artifact name.
- */
-function parseArtifactRef(ref: string): { sourceName: string; artifactName: string } | null {
-  const lastSlash = ref.lastIndexOf("/");
-  if (lastSlash === -1) return null;
-
-  return {
-    sourceName: ref.slice(0, lastSlash),
-    artifactName: ref.slice(lastSlash + 1),
-  };
 }
 
 export const updateCommand = defineCommand({
@@ -74,14 +64,14 @@ export const updateCommand = defineCommand({
     let updated = 0;
 
     for (const artifactRef of artifactsToUpdate) {
-      // Parse artifact reference: source-name/artifact-name
+      // Parse artifact reference: source-name/artifact-name[@ref]
       const parsed = parseArtifactRef(artifactRef);
       if (!parsed) {
         console.log(`Invalid artifact reference: ${artifactRef}`);
         continue;
       }
 
-      const { sourceName, artifactName } = parsed;
+      const { source: sourceName, artifact: artifactName, ref: versionRef } = parsed;
 
       // Look up source from config, fallback to parsing as new
       let source = findSource(config.sources, sourceName);
@@ -94,24 +84,28 @@ export const updateCommand = defineCommand({
         }
       }
 
+      // Lock key is without version ref
+      const lockKey = `${sourceName}/${artifactName}`;
+
       console.log(`Checking ${artifactRef}...`);
 
       // Fetch latest
       await ensureRepo(source);
       const repoPath = getRepoPath(source);
 
-      // Resolve latest SHA
-      const latestSha = await resolveRef(repoPath, "HEAD");
+      // Resolve ref to SHA (use pinned ref if specified, otherwise HEAD)
+      const refToResolve = versionRef ?? "HEAD";
+      const { sha: latestSha, cachePath } = await checkoutToCache(repoPath, refToResolve);
 
       // Check if update needed
-      const lockEntry = lock.artifacts[artifactRef];
+      const lockEntry = lock.artifacts[lockKey];
       if (lockEntry && lockEntry.sha === latestSha) {
         console.log(`  Already up to date (${latestSha.slice(0, 8)})`);
         continue;
       }
 
-      // Discover to get path (use source's explicit format if set)
-      const result = await discover(repoPath, source.subdir, source.format);
+      // Discover to get path from cached repo
+      const result = await discover(cachePath, source.subdir, source.format);
       const artifact = result.artifacts.find((a: DiscoveredArtifact) => a.name === artifactName);
 
       if (!artifact) {
@@ -119,13 +113,18 @@ export const updateCommand = defineCommand({
         continue;
       }
 
+      // Compute integrity hash
+      const artifactPath = join(cachePath, artifact.path);
+      const integrity = await hashDirectory(artifactPath);
+
       const oldSha = lockEntry?.sha?.slice(0, 8) || "none";
 
       // Update lock
-      lock.artifacts[artifactRef] = {
+      lock.artifacts[lockKey] = {
         sha: latestSha,
-        integrity: `sha256-${latestSha.slice(0, 16)}`,
+        integrity,
         path: artifact.path,
+        ...(versionRef && { ref: versionRef }),
         metadata: {
           name: artifact.name,
           description: artifact.description,

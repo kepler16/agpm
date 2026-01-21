@@ -5,13 +5,12 @@
     {
       "name": "anthropics/skills",
       "url": "https://github.com/anthropics/skills.git"
-    },
-    {
-      "name": "k42-platform/kai",
-      "url": "git@github.com:k42-platform/kai.git"
     }
   ],
   "artifacts": [
-    "anthropics/skills/pdf"
-  ]
+    "anthropics/skills/pdf",
+    "anthropics/skills/docx@main",
+    "anthropics/skills/xlsx@69c0b1a"
+  ],
+  "collections": []
 }

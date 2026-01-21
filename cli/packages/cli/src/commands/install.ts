@@ -6,10 +6,12 @@ import {
   loadLock,
   saveLock,
   parseSourceString,
+  parseArtifactRef,
   ensureRepo,
   getRepoPath,
   discover,
-  resolveRef,
+  checkoutToCache,
+  hashDirectory,
   type Source,
   type DiscoveredArtifact,
 } from "@agpm/core";
@@ -25,15 +27,16 @@ function findSource(sources: Source[], name: string): Source | undefined {
 }
 
 /**
- * Parse reference (source/name) into source name and item name.
+ * Parse collection reference (source/name) into source name and collection name.
+ * Collections don't support version refs.
  */
-function parseRef(ref: string): { sourceName: string; itemName: string } | null {
+function parseCollectionRef(ref: string): { sourceName: string; collectionName: string } | null {
   const lastSlash = ref.lastIndexOf("/");
   if (lastSlash === -1) return null;
 
   return {
     sourceName: ref.slice(0, lastSlash),
-    itemName: ref.slice(lastSlash + 1),
+    collectionName: ref.slice(lastSlash + 1),
   };
 }
 
@@ -66,13 +69,13 @@ export const installCommand = defineCommand({
 
     // Expand collections to their artifacts
     for (const collectionRef of config.collections) {
-      const parsed = parseRef(collectionRef);
+      const parsed = parseCollectionRef(collectionRef);
       if (!parsed) {
         console.log(`Invalid collection reference: ${collectionRef}`);
         continue;
       }
 
-      const { sourceName, itemName: collectionName } = parsed;
+      const { sourceName, collectionName } = parsed;
 
       let source = findSource(config.sources, sourceName);
       if (!source) {
@@ -112,13 +115,13 @@ export const installCommand = defineCommand({
     const discoveryCache = new Map<string, DiscoveredArtifact[]>();
 
     for (const artifactRef of artifactRefs) {
-      const parsed = parseRef(artifactRef);
+      const parsed = parseArtifactRef(artifactRef);
       if (!parsed) {
         console.log(`Invalid artifact reference: ${artifactRef}`);
         continue;
       }
 
-      const { sourceName, itemName: artifactName } = parsed;
+      const { source: sourceName, artifact: artifactName, ref: versionRef } = parsed;
 
       let source = findSource(config.sources, sourceName);
       if (!source) {
@@ -130,8 +133,11 @@ export const installCommand = defineCommand({
         }
       }
 
+      // Build the lock key (without version ref - lock tracks resolved SHA)
+      const lockKey = `${sourceName}/${artifactName}`;
+
       // Check if we have a lock entry
-      let lockEntry = lock.artifacts[artifactRef];
+      let lockEntry = lock.artifacts[lockKey];
 
       if (!lockEntry || args.force) {
         console.log(`Resolving ${artifactRef}...`);
@@ -139,12 +145,16 @@ export const installCommand = defineCommand({
         await ensureRepo(source);
         const repoPath = getRepoPath(source);
 
-        // Get or cache discovered artifacts
-        let artifacts = discoveryCache.get(sourceName);
+        // Checkout to cache at the specified ref (or HEAD)
+        const { sha, cachePath } = await checkoutToCache(repoPath, versionRef ?? "HEAD");
+
+        // Get or cache discovered artifacts (discovered from cached repo)
+        const cacheKey = `${sourceName}@${sha}`;
+        let artifacts = discoveryCache.get(cacheKey);
         if (!artifacts) {
-          const result = await discover(repoPath, source.subdir, source.format);
+          const result = await discover(cachePath, source.subdir, source.format);
           artifacts = result.artifacts;
-          discoveryCache.set(sourceName, artifacts);
+          discoveryCache.set(cacheKey, artifacts);
         }
 
         const artifact = artifacts.find((a) => a.name === artifactName);
@@ -153,25 +163,31 @@ export const installCommand = defineCommand({
           continue;
         }
 
-        const sha = await resolveRef(repoPath, "HEAD");
+        // Compute integrity hash of the artifact directory
+        const artifactPath = join(cachePath, artifact.path);
+        const integrity = await hashDirectory(artifactPath);
 
         lockEntry = {
           sha,
-          integrity: `sha256-${sha.slice(0, 16)}`,
+          integrity,
           path: artifact.path,
+          ...(versionRef && { ref: versionRef }),
           metadata: {
             name: artifact.name,
             description: artifact.description,
           },
         };
 
-        lock.artifacts[artifactRef] = lockEntry;
+        lock.artifacts[lockKey] = lockEntry;
         updated = true;
       }
 
-      // Install to target directories
+      // Install from cache to target directories
+      // First, ensure we have the SHA in cache
+      await ensureRepo(source);
       const repoPath = getRepoPath(source);
-      const sourcePath = join(repoPath, lockEntry.path);
+      const { cachePath } = await checkoutToCache(repoPath, lockEntry.sha);
+      const sourcePath = join(cachePath, lockEntry.path);
 
       for (const targetDir of TARGET_DIRS) {
         const targetPath = join(cwd, targetDir, artifactName);

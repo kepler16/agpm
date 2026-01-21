@@ -1,0 +1,119 @@
+# Configuration
+
+AGPM uses two configuration files: `agpm.json` for your project configuration and `agpm-lock.json` for reproducible installations.
+
+## agpm.json
+
+The main configuration file that defines your targets, sources, and artifacts.
+
+### Schema
+
+```json
+{
+  "$schema": "https://agpm.dev/schemas/agpm.json",
+  "targets": {},
+  "sources": [],
+  "collections": [],
+  "artifacts": []
+}
+```
+
+### Properties
+
+#### targets
+
+An object defining which AI tools to install artifacts to. Each key is a target name, and the value contains target-specific options.
+
+```json
+{
+  "targets": {
+    "claude": {},
+    "opencode": {},
+    "codex": {}
+  }
+}
+```
+
+**Supported targets:**
+- `claude` - Installs to `.claude/skills/`
+- `opencode` - Installs to `.opencode/skills/`
+- `codex` - Installs to `.codex/skills/`
+
+#### sources
+
+An array of source repositories containing artifacts.
+
+```json
+{
+  "sources": [
+    {
+      "name": "anthropics/skills",
+      "url": "https://github.com/anthropics/skills.git",
+      "format": "auto",
+      "subdir": ""
+    }
+  ]
+}
+```
+
+**Source properties:**
+- `name` (required) - Display name for the source
+- `url` (required) - Git URL for cloning
+- `format` - Discovery format: `auto`, `claude-marketplace`, `claude-plugin`, or `simple`
+- `subdir` - Subdirectory within the repo to use as root
+
+#### collections
+
+An array of collection references that expand to multiple artifacts at install time.
+
+```json
+{
+  "collections": [
+    "anthropics/skills/office-suite",
+    "my-org/plugins/productivity"
+  ]
+}
+```
+
+#### artifacts
+
+An array of individual artifact references to install.
+
+```json
+{
+  "artifacts": [
+    "anthropics/skills/pdf",
+    "anthropics/skills/pdf@1.0.0"
+  ]
+}
+```
+
+## Complete Example
+
+```json
+{
+  "$schema": "https://agpm.dev/schemas/agpm.json",
+  "targets": {
+    "claude": {},
+    "opencode": {}
+  },
+  "sources": [
+    {
+      "name": "anthropics/skills",
+      "url": "https://github.com/anthropics/skills.git"
+    },
+    {
+      "name": "my-company/internal-skills",
+      "url": "git@github.com:my-company/internal-skills.git",
+      "subdir": "skills"
+    }
+  ],
+  "collections": [
+    "anthropics/skills/document-skills"
+  ],
+  "artifacts": [
+    "anthropics/skills/pdf",
+    "my-company/internal-skills/custom-tool"
+  ]
+}
+```

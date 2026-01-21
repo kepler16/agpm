@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { mkdir } from "node:fs/promises";
 import type { Source } from "./config.js";
+import { cacheRepo, isCached, getCachedRepoPath } from "./cache.js";
 
 // ============================================================================
 // Types
@@ -239,4 +240,32 @@ export async function resolveRef(repoPath: string, ref: string = "HEAD"): Promis
   const git = simpleGit(repoPath);
   const result = await git.revparse([ref]);
   return result.trim();
+}
+
+/**
+ * Checkout a ref and cache the repo at that SHA.
+ *
+ * 1. Resolves the ref to a full SHA
+ * 2. If not already cached, checkouts the repo at that SHA and caches it
+ * 3. Returns the SHA and path to the cached repo
+ */
+export async function checkoutToCache(
+  repoPath: string,
+  ref: string = "HEAD"
+): Promise<{ sha: string; cachePath: string }> {
+  // Resolve ref to full SHA
+  const sha = await resolveRef(repoPath, ref);
+
+  // Check if already cached
+  if (await isCached(sha)) {
+    return { sha, cachePath: getCachedRepoPath(sha) };
+  }
+
+  // Checkout the specific SHA
+  await checkoutRef(repoPath, sha);
+
+  // Cache the repo at this SHA
+  const cachePath = await cacheRepo(repoPath, sha);
+
+  return { sha, cachePath };
 }

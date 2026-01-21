@@ -36,13 +36,70 @@ export interface AgpmConfig {
 }
 
 export interface LockedArtifact {
+  /** Full 40-character git SHA */
   sha: string;
+  /** Integrity hash: "sha256-<base64>" */
   integrity: string;
+  /** Path within the repo */
   path: string;
+  /** Original ref if specified (tag/branch), undefined means HEAD */
+  ref?: string;
   metadata: {
     name: string;
     description?: string;
     [key: string]: unknown;
+  };
+}
+
+// ============================================================================
+// Artifact Reference Parsing
+// ============================================================================
+
+/**
+ * Parsed artifact reference with optional version/ref.
+ */
+export interface ArtifactRef {
+  /** Source name (e.g., "anthropics/skills") */
+  source: string;
+  /** Artifact name (e.g., "pdf") */
+  artifact: string;
+  /** Optional ref: tag, branch, or SHA (e.g., "v1.0.0", "main", "abc123") */
+  ref?: string;
+}
+
+/**
+ * Parse an artifact reference string.
+ *
+ * Formats:
+ * - "source/artifact" → { source: "source", artifact: "artifact", ref: undefined }
+ * - "source/artifact@ref" → { source: "source", artifact: "artifact", ref: "ref" }
+ *
+ * Examples:
+ * - "anthropics/skills/pdf" → { source: "anthropics/skills", artifact: "pdf" }
+ * - "anthropics/skills/pdf@v1.0.0" → { source: "anthropics/skills", artifact: "pdf", ref: "v1.0.0" }
+ * - "anthropics/skills/pdf@main" → { source: "anthropics/skills", artifact: "pdf", ref: "main" }
+ */
+export function parseArtifactRef(refString: string): ArtifactRef | null {
+  // Handle @ref suffix
+  const atIndex = refString.lastIndexOf("@");
+  const lastSlash = refString.lastIndexOf("/");
+
+  // @ must come after the last / to be a ref (not part of source name)
+  const hasRef = atIndex > lastSlash && atIndex !== -1;
+
+  const withoutRef = hasRef ? refString.slice(0, atIndex) : refString;
+  const ref = hasRef ? refString.slice(atIndex + 1) : undefined;
+
+  // Split into source and artifact
+  const slashIndex = withoutRef.lastIndexOf("/");
+  if (slashIndex === -1) {
+    return null;
+  }
+
+  return {
+    source: withoutRef.slice(0, slashIndex),
+    artifact: withoutRef.slice(slashIndex + 1),
+    ref,
   };
 }
 

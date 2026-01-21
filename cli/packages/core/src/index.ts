@@ -6,6 +6,7 @@ export {
   type LockedArtifact,
   type Source,
   type SourceFormat,
+  type ArtifactRef,
   DEFAULT_CONFIG,
   DEFAULT_LOCK,
   CONFIG_SCHEMA_URL,
@@ -14,6 +15,7 @@ export {
   saveConfig,
   loadLock,
   saveLock,
+  parseArtifactRef,
 } from "./config.js";
 
 // Validation
@@ -34,7 +36,18 @@ export {
   ensureRepo,
   checkoutRef,
   resolveRef,
+  checkoutToCache,
 } from "./git.js";
+
+// Cache operations
+export {
+  getAgpmCacheDir,
+  getCachedRepoPath,
+  isCached,
+  cacheRepo,
+  hashDirectory,
+  verifyIntegrity,
+} from "./cache.js";
 
 // Discovery
 export {

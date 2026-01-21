@@ -12,6 +12,21 @@ import {
 } from "@agpm/core";
 
 /**
+ * Parse artifact name that may include a version ref.
+ * Returns { name, ref } where ref is the version if specified.
+ */
+function parseArtifactName(input: string): { name: string; ref?: string } {
+  const atIndex = input.lastIndexOf("@");
+  if (atIndex > 0) {
+    return {
+      name: input.slice(0, atIndex),
+      ref: input.slice(atIndex + 1),
+    };
+  }
+  return { name: input };
+}
+
+/**
  * Find a source in the config by name.
  */
 function findSource(sources: Source[], name: string): Source | undefined {
@@ -61,29 +76,35 @@ export const addCommand = defineCommand({
     }
 
     if (args.name) {
-      // Check if it's a collection first
+      // Parse artifact name (may include @version)
+      const { name: itemName, ref: versionRef } = parseArtifactName(args.name);
+
+      // Check if it's a collection first (collections don't support version refs)
       const collection = result.collections.find(
-        (c) => c.name === args.name
+        (c) => c.name === itemName
       );
 
       if (collection) {
+        if (versionRef) {
+          console.log("Warning: Collections do not support version refs. Ignoring @" + versionRef);
+        }
         return addCollection(config, source, collection, cwd);
       }
 
       // Otherwise, find specific artifact
       const artifact = result.artifacts.find(
         (a) =>
-          a.name === args.name ||
-          a.path === args.name ||
-          a.path.endsWith(`/${args.name}`)
+          a.name === itemName ||
+          a.path === itemName ||
+          a.path.endsWith(`/${itemName}`)
       );
 
       if (artifact) {
-        return addArtifact(config, source, artifact, cwd);
+        return addArtifact(config, source, artifact, cwd, versionRef);
       }
 
       // Not found
-      console.log(`"${args.name}" not found in source.`);
+      console.log(`"${itemName}" not found in source.`);
       showAvailable(result.collections, result.artifacts, args.source);
       return;
     }
@@ -134,21 +155,41 @@ async function addArtifact(
   config: Awaited<ReturnType<typeof loadConfig>>,
   source: Source,
   artifact: DiscoveredArtifact,
-  cwd: string
+  cwd: string,
+  versionRef?: string
 ) {
-  const artifactRef = `${source.name}/${artifact.name}`;
+  // Build artifact reference with optional version
+  const artifactRef = versionRef
+    ? `${source.name}/${artifact.name}@${versionRef}`
+    : `${source.name}/${artifact.name}`;
 
-  if (config.artifacts.includes(artifactRef)) {
-    console.log(`Artifact already configured: ${artifactRef}`);
-    return;
+  // Check for existing entry (with or without version)
+  const baseRef = `${source.name}/${artifact.name}`;
+  const existingIndex = config.artifacts.findIndex(
+    (a) => a === artifactRef || a.startsWith(baseRef + "@") || a === baseRef
+  );
+
+  if (existingIndex !== -1) {
+    const existing = config.artifacts[existingIndex];
+    if (existing === artifactRef) {
+      console.log(`Artifact already configured: ${artifactRef}`);
+      return;
+    }
+    // Update to new version
+    config.artifacts[existingIndex] = artifactRef;
+    await saveConfig(cwd, config);
+    console.log(`Updated: ${existing} → ${artifactRef}`);
+  } else {
+    config.artifacts.push(artifactRef);
+    await saveConfig(cwd, config);
+    console.log(`Added: ${artifactRef}`);
   }
 
-  config.artifacts.push(artifactRef);
-  await saveConfig(cwd, config);
-
-  console.log(`Added: ${artifactRef}`);
   if (artifact.description) {
     console.log(`  ${artifact.description}`);
+  }
+  if (versionRef) {
+    console.log(`  Pinned to: ${versionRef}`);
   }
   console.log();
   console.log("Run `agpm install` to install the artifact.");

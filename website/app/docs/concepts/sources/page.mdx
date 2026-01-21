@@ -1,0 +1,97 @@
+# Sources
+
+Sources are git repositories containing artifacts. AGPM clones sources locally and discovers available artifacts within them.
+
+## Source Formats
+
+AGPM accepts sources in several formats:
+
+### GitHub Shorthand
+
+The simplest format for GitHub repositories:
+
+```bash
+agpm source add anthropics/skills
+```
+
+This expands to `https://github.com/anthropics/skills.git`.
+
+### With Subpath
+
+Specify a subdirectory within the repository:
+
+```bash
+agpm source add owner/repo#subdirectory
+```
+
+Useful when artifacts are in a specific folder within a larger repository.
+
+### Full URL
+
+Use any valid git URL:
+
+```bash
+# HTTPS
+agpm source add https://github.com/owner/repo.git
+
+# SSH
+agpm source add git@github.com:owner/repo.git
+
+# GitLab, Bitbucket, etc.
+agpm source add https://gitlab.com/owner/repo.git
+```
+
+## Source Configuration
+
+In `agpm.json`, sources are stored with full configuration:
+
+```json
+{
+  "sources": [
+    {
+      "name": "anthropics/skills",
+      "url": "https://github.com/anthropics/skills.git",
+      "format": "auto",
+      "subdir": ""
+    }
+  ]
+}
+```
+
+### Properties
+
+| Property | Required | Description |
+|----------|----------|-------------|
+| `name` | Yes | Display name and reference identifier |
+| `url` | Yes | Git URL for cloning |
+| `format` | No | Discovery format (defaults to `auto`) |
+| `subdir` | No | Subdirectory to use as root |
+
+### Discovery Formats
+
+The `format` property controls how AGPM discovers artifacts:
+
+- `auto` - Automatically detect format (default)
+- `claude-marketplace` - Looks for `.claude-plugin/marketplace.json`
+- `claude-plugin` - Looks for `.claude-plugin/plugin.json`
+- `simple` - Looks for `skills/` directory with `SKILL.md` files
+
+## Local Cache
+
+Sources are cloned to `~/.agpm/repos/`. AGPM fetches updates when needed but caches repositories to speed up operations.
+
+## Managing Sources
+
+```bash
+# Add a source
+agpm source add anthropics/skills
+
+# List all sources
+agpm source list
+
+# Discover artifacts in a source
+agpm source discover anthropics/skills
+
+# Remove a source
+agpm source remove anthropics/skills
+```

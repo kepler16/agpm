@@ -1,0 +1,90 @@
+# Lock File
+
+The `agpm-lock.json` file is automatically generated and updated by AGPM. It ensures reproducible installations by pinning artifacts to specific git commit SHAs.
+
+## Purpose
+
+- **Reproducibility** - Ensures everyone on your team gets the exact same artifact versions
+- **Integrity** - Includes content hashes to verify artifact integrity
+- **Speed** - Allows AGPM to skip fetching when versions haven't changed
+
+## Schema
+
+```json
+{
+  "$schema": "https://agpm.dev/schemas/agpm-lock.json",
+  "version": 1,
+  "artifacts": {}
+}
+```
+
+## Properties
+
+### version
+
+The lock file format version. Currently always `1`.
+
+### artifacts
+
+An object mapping artifact references to their resolved details.
+
+```json
+{
+  "artifacts": {
+    "anthropics/skills/pdf": {
+      "sha": "69c0b1a0674149f27b61b2635f935524b6add202",
+      "integrity": "sha256-abc123...",
+      "path": "skills/pdf",
+      "metadata": {
+        "name": "pdf",
+        "description": "PDF manipulation toolkit for AI assistants"
+      }
+    }
+  }
+}
+```
+
+**Artifact properties:**
+- `sha` - Git commit SHA (40 characters)
+- `integrity` - Content hash for verification (sha256-...)
+- `path` - Relative path within the repository
+- `metadata` - Discovered artifact metadata
+  - `name` - Artifact name
+  - `description` - Artifact description
+
+## Working with the Lock File
+
+### Don't edit manually
+
+The lock file is managed by AGPM. Don't edit it manually.
+
+### Commit to version control
+
+Always commit `agpm-lock.json` to your repository. This ensures reproducible builds.
+
+### Update with agpm update
+
+To get the latest versions:
+
+```bash
+# Update all artifacts
+agpm update
+
+# Update a specific artifact
+agpm update anthropics/skills/pdf
+```
+
+### Reinstall from lock file
+
+When the lock file exists, `agpm install` uses the pinned versions:
+
+```bash
+agpm install
+```
+
+To force a fresh resolution (ignoring the lock file), delete it first:
+
+```bash
+rm agpm-lock.json
+agpm install
+```

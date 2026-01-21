@@ -1,0 +1,79 @@
+# Getting Started
+
+AGPM (Agent Package Manager) is a universal package manager for AI coding tool artifacts. It helps you manage skills, commands, and hooks across Claude, OpenCode, Codex, and other AI tools.
+
+## Installation
+
+Install AGPM globally using your preferred package manager:
+
+```bash
+# Using pnpm (recommended)
+pnpm add -g @agpm/cli
+
+# Using npm
+npm install -g @agpm/cli
+
+# Using yarn
+yarn global add @agpm/cli
+```
+
+## Quick Start
+
+### 1. Initialize your project
+
+Create an `agpm.json` file in your project root:
+
+```json
+{
+  "$schema": "https://agpm.dev/schemas/agpm.json",
+  "targets": {
+    "claude": {}
+  },
+  "sources": [],
+  "artifacts": []
+}
+```
+
+### 2. Add a source repository
+
+Add a repository containing artifacts:
+
+```bash
+agpm source add anthropics/skills
+```
+
+This clones the repository and makes its artifacts available for installation.
+
+### 3. Discover available artifacts
+
+See what artifacts are available in a source:
+
+```bash
+agpm source discover anthropics/skills
+```
+
+### 4. Add an artifact
+
+Add an artifact to your project:
+
+```bash
+agpm add anthropics/skills pdf
+```
+
+This adds the artifact reference to your `agpm.json`.
+
+### 5. Install artifacts
+
+Install all configured artifacts to your target directories:
+
+```bash
+agpm install
+```
+
+Artifacts are copied to the appropriate directories for each target (e.g., `.claude/skills/` for Claude).
+
+## What's Next?
+
+- Learn about [commands](/docs/commands) available in AGPM
+- Understand the [configuration](/docs/configuration) format
+- Explore [concepts](/docs/concepts/sources) like sources and discovery formats
