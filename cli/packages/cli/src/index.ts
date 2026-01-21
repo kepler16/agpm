@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
 import { defineCommand, runMain } from "citty";
 import { sourceCommand } from "./commands/source.js";
 import { addCommand } from "./commands/add.js";
@@ -6,6 +7,9 @@ import { installCommand } from "./commands/install.js";
 import { listCommand } from "./commands/list.js";
 import { removeCommand } from "./commands/remove.js";
 import { updateCommand } from "./commands/update.js";
+
+const require = createRequire(import.meta.url);
+const { version } = require("../package.json");
 
 // Sync is an alias for install
 const syncCommand = defineCommand({
@@ -20,7 +24,7 @@ const syncCommand = defineCommand({
 const main = defineCommand({
   meta: {
     name: "agpm",
-    version: "0.0.1",
+    version,
     description: "Agent Package Manager - Universal package manager for AI coding tool artifacts",
   },
   subCommands: {
