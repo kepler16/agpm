@@ -46,6 +46,30 @@ export interface DiscoveryResult {
   format: RepoFormat;
 }
 
+/** Common plugin entry structure (shared between plugin.json and marketplace entries) */
+export interface PluginEntry {
+  name: string;
+  version?: string;
+  description?: string;
+  author?: {
+    name: string;
+    email?: string;
+    url?: string;
+  };
+  /**
+   * Skills configuration:
+   * - In plugin.json: path(s) to directories containing skills (e.g., "./custom/skills/")
+   * - In marketplace: explicit paths to individual skill directories (e.g., ["./skills/pdf"])
+   */
+  skills?: string | string[];
+  commands?: string | string[];
+  agents?: string | string[];
+  /** Marketplace-only: source directory for the plugin */
+  source?: string;
+  /** Marketplace-only: if true, plugin must have its own plugin.json */
+  strict?: boolean;
+}
+
 /** Marketplace manifest (.claude-plugin/marketplace.json) - multiple plugins */
 export interface ClaudeMarketplaceManifest {
   name: string;
@@ -57,29 +81,11 @@ export interface ClaudeMarketplaceManifest {
     description?: string;
     version?: string;
   };
-  plugins: Array<{
-    name: string;
-    description?: string;
-    source?: string;
-    skills?: string[];
-  }>;
+  plugins: PluginEntry[];
 }
 
 /** Plugin manifest (.claude-plugin/plugin.json) - single plugin */
-export interface ClaudePluginManifest {
-  name: string;
-  version?: string;
-  description?: string;
-  author?: {
-    name: string;
-    email?: string;
-    url?: string;
-  };
-  /** Skills path(s) - can be string or array */
-  skills?: string | string[];
-  commands?: string | string[];
-  agents?: string | string[];
-}
+export type ClaudePluginManifest = PluginEntry;
 
 export interface SkillMetadata {
   name: string;
@@ -126,6 +132,107 @@ export async function detectFormat(repoPath: string): Promise<RepoFormat> {
   }
 
   return "unknown";
+}
+
+// ============================================================================
+// Skill Discovery Helpers
+// ============================================================================
+
+interface DiscoveredSkill {
+  name: string;
+  description?: string;
+  path: string;
+  absolutePath: string;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Discover skills from explicit paths (used by marketplace when skills array is defined).
+ */
+async function discoverSkillsFromPaths(
+  repoPath: string,
+  skillPaths: string[],
+  seenPaths: Set<string>,
+  fallbackDescription?: string
+): Promise<DiscoveredSkill[]> {
+  const skills: DiscoveredSkill[] = [];
+
+  for (const skillPath of skillPaths) {
+    const normalizedPath = skillPath.replace(/^\.\//, "");
+    if (seenPaths.has(normalizedPath)) continue;
+    seenPaths.add(normalizedPath);
+
+    const absolutePath = join(repoPath, normalizedPath);
+    const metadata = await parseSkillMd(absolutePath);
+
+    skills.push({
+      name: metadata?.name ?? basename(normalizedPath),
+      description: metadata?.description ?? fallbackDescription,
+      path: normalizedPath,
+      absolutePath,
+      metadata: metadata as Record<string, unknown> | undefined,
+    });
+  }
+
+  return skills;
+}
+
+/**
+ * Discover all skills within a directory (used by plugin.json and marketplace fallback).
+ */
+async function discoverSkillsFromDirectory(
+  repoPath: string,
+  skillsDir: string,
+  seenPaths: Set<string>,
+  fallbackDescription?: string
+): Promise<DiscoveredSkill[]> {
+  const skills: DiscoveredSkill[] = [];
+
+  try {
+    const entries = await readdir(skillsDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+
+      const skillPath = join(skillsDir, entry.name);
+      const relativePath = relative(repoPath, skillPath);
+
+      if (seenPaths.has(relativePath)) continue;
+      seenPaths.add(relativePath);
+
+      const metadata = await parseSkillMd(skillPath);
+
+      skills.push({
+        name: metadata?.name ?? entry.name,
+        description: metadata?.description ?? fallbackDescription,
+        path: relativePath,
+        absolutePath: skillPath,
+        metadata: metadata as Record<string, unknown> | undefined,
+      });
+    }
+  } catch {
+    // Directory doesn't exist or can't be read
+  }
+
+  return skills;
+}
+
+/**
+ * Convert discovered skills to artifacts with format tag.
+ */
+function skillsToArtifacts(
+  skills: DiscoveredSkill[],
+  format: SourceFormat
+): DiscoveredArtifact[] {
+  return skills.map((skill) => ({
+    name: skill.name,
+    description: skill.description,
+    type: "skill" as const,
+    path: skill.path,
+    absolutePath: skill.absolutePath,
+    format,
+    metadata: skill.metadata,
+  }));
 }
 
 // ============================================================================
@@ -180,123 +287,86 @@ export async function discoverArtifacts(
  * Discover artifacts from Claude marketplace manifest.
  *
  * Marketplace format (.claude-plugin/marketplace.json):
- * - Contains `plugins` array with multiple plugin entries
- * - Each plugin has `source` pointing to a plugin directory
- * - That directory contains a `skills/` subdirectory with skill folders
- * - Each skill folder has SKILL.md
+ * - Contains `plugins` array with plugin entries
+ * - If plugin has explicit `skills` array → use only those
+ * - Otherwise discover from `source/skills/` directory
  * - Each plugin becomes a collection containing its artifacts
  */
 async function discoverClaudeMarketplace(repoPath: string): Promise<DiscoveryResult> {
   const manifestPath = join(repoPath, ".claude-plugin", "marketplace.json");
-  const artifacts: DiscoveredArtifact[] = [];
-  const collections: DiscoveredCollection[] = [];
-  const seenPaths = new Set<string>();
-
   const content = await readFile(manifestPath, "utf-8");
   const manifest: ClaudeMarketplaceManifest = JSON.parse(content);
 
+  const allArtifacts: DiscoveredArtifact[] = [];
+  const collections: DiscoveredCollection[] = [];
+  const seenPaths = new Set<string>();
+
   for (const plugin of manifest.plugins) {
-    const collectionArtifacts: string[] = [];
     const sourcePath = (typeof plugin.source === "string" ? plugin.source : "").replace(/^\.\//, "");
+    let skills: DiscoveredSkill[] = [];
 
-    // If plugin has explicit skills array, use ONLY those (not discovery)
-    if (plugin.skills && plugin.skills.length > 0) {
-      for (const skillPath of plugin.skills) {
-        const normalizedPath = skillPath.replace(/^\.\//, "");
-
-        // Skip duplicates
-        if (seenPaths.has(normalizedPath)) continue;
-        seenPaths.add(normalizedPath);
-
-        const absolutePath = join(repoPath, normalizedPath);
-        const metadata = await parseSkillMd(absolutePath);
-        const artifactName = metadata?.name ?? basename(normalizedPath);
-
-        artifacts.push({
-          name: artifactName,
-          description: metadata?.description ?? plugin.description,
-          type: "skill",
-          path: normalizedPath,
-          absolutePath,
-          format: "claude-marketplace",
-          metadata: metadata as Record<string, unknown> | undefined,
-        });
-
-        collectionArtifacts.push(artifactName);
-      }
+    // If plugin has explicit skills array, use ONLY those
+    if (plugin.skills && Array.isArray(plugin.skills) && plugin.skills.length > 0) {
+      skills = await discoverSkillsFromPaths(
+        repoPath,
+        plugin.skills,
+        seenPaths,
+        plugin.description
+      );
     } else if (plugin.source) {
       // No explicit skills - discover from source/skills/ directory
       const pluginDir = sourcePath ? join(repoPath, sourcePath) : repoPath;
       const skillsDir = join(pluginDir, "skills");
-
-      try {
-        const entries = await readdir(skillsDir, { withFileTypes: true });
-
-        for (const entry of entries) {
-          if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
-
-          const skillPath = join(skillsDir, entry.name);
-          const relativePath = relative(repoPath, skillPath);
-
-          // Skip duplicates (multiple plugins may point to same skills dir)
-          if (seenPaths.has(relativePath)) continue;
-          seenPaths.add(relativePath);
-
-          const metadata = await parseSkillMd(skillPath);
-          const artifactName = metadata?.name ?? entry.name;
-
-          artifacts.push({
-            name: artifactName,
-            description: metadata?.description ?? plugin.description,
-            type: "skill",
-            path: relativePath,
-            absolutePath: skillPath,
-            format: "claude-marketplace",
-            metadata: metadata as Record<string, unknown> | undefined,
-          });
-
-          collectionArtifacts.push(artifactName);
-        }
-      } catch {
-        // skills/ directory doesn't exist in plugin source dir
-      }
+      skills = await discoverSkillsFromDirectory(
+        repoPath,
+        skillsDir,
+        seenPaths,
+        plugin.description
+      );
     }
 
+    // Add to artifacts
+    const artifacts = skillsToArtifacts(skills, "claude-marketplace");
+    allArtifacts.push(...artifacts);
+
     // Create collection for this plugin
-    if (collectionArtifacts.length > 0) {
+    if (skills.length > 0) {
       collections.push({
         name: plugin.name,
         description: plugin.description,
-        artifacts: collectionArtifacts,
+        artifacts: skills.map((s) => s.name),
         path: sourcePath || ".",
+        metadata: {
+          version: plugin.version,
+          author: plugin.author,
+        },
       });
     }
   }
 
-  return { artifacts, collections, format: "claude-marketplace" };
+  return { artifacts: allArtifacts, collections, format: "claude-marketplace" };
 }
 
 /**
  * Discover artifacts from Claude plugin manifest.
  *
  * Plugin format (.claude-plugin/plugin.json):
- * - Single plugin with optional `skills` field (string or array of paths)
+ * - `skills` field is path(s) to directories CONTAINING skills
  * - Default `skills/` directory is always searched
- * - Each skill is a directory with SKILL.md
  * - The plugin itself is the collection containing all artifacts
  */
 async function discoverClaudePlugin(repoPath: string): Promise<DiscoveryResult> {
   const manifestPath = join(repoPath, ".claude-plugin", "plugin.json");
-  const artifacts: DiscoveredArtifact[] = [];
-  const seenPaths = new Set<string>();
-
   const content = await readFile(manifestPath, "utf-8");
   const manifest: ClaudePluginManifest = JSON.parse(content);
+
+  const seenPaths = new Set<string>();
+  const allSkills: DiscoveredSkill[] = [];
 
   // Collect skill directories to search
   const skillsDirs: string[] = [];
 
-  // Add custom skills paths from manifest
+  // Add custom skills paths from manifest (these are directory paths, not individual skills)
   if (manifest.skills) {
     const paths = Array.isArray(manifest.skills) ? manifest.skills : [manifest.skills];
     for (const p of paths) {
@@ -308,43 +378,24 @@ async function discoverClaudePlugin(repoPath: string): Promise<DiscoveryResult> 
   // Always add default skills/ directory
   skillsDirs.push(join(repoPath, "skills"));
 
-  // Search each skills directory
+  // Discover skills from each directory
   for (const skillsDir of skillsDirs) {
-    try {
-      const entries = await readdir(skillsDir, { withFileTypes: true });
-
-      for (const entry of entries) {
-        if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
-
-        const skillPath = join(skillsDir, entry.name);
-        const relativePath = relative(repoPath, skillPath);
-
-        // Skip duplicates
-        if (seenPaths.has(relativePath)) continue;
-        seenPaths.add(relativePath);
-
-        const metadata = await parseSkillMd(skillPath);
-
-        artifacts.push({
-          name: metadata?.name ?? entry.name,
-          description: metadata?.description ?? manifest.description,
-          type: "skill",
-          path: relativePath,
-          absolutePath: skillPath,
-          format: "claude-plugin",
-          metadata: metadata as Record<string, unknown> | undefined,
-        });
-      }
-    } catch {
-      // skills directory doesn't exist or can't be read
-    }
+    const skills = await discoverSkillsFromDirectory(
+      repoPath,
+      skillsDir,
+      seenPaths,
+      manifest.description
+    );
+    allSkills.push(...skills);
   }
+
+  const artifacts = skillsToArtifacts(allSkills, "claude-plugin");
 
   // The plugin itself is the single collection
   const collection: DiscoveredCollection = {
     name: manifest.name,
     description: manifest.description,
-    artifacts: artifacts.map((a) => a.name),
+    artifacts: allSkills.map((s) => s.name),
     path: ".",
     metadata: {
       version: manifest.version,
@@ -361,6 +412,7 @@ async function discoverClaudePlugin(repoPath: string): Promise<DiscoveryResult> 
 
 /**
  * Discover artifacts from simple format (skills/ directory).
+ * Simple format uses metadata.json, not Claude's SKILL.md structure.
  * Simple format has no collections - just raw artifacts.
  */
 async function discoverSimpleFormat(repoPath: string): Promise<DiscoveryResult> {
@@ -375,21 +427,18 @@ async function discoverSimpleFormat(repoPath: string): Promise<DiscoveryResult> 
       if (entry.name.startsWith(".")) continue;
 
       const skillPath = join(skillsDir, entry.name);
-      const metadata = await parseSkillMd(skillPath);
 
-      // Also try metadata.json
-      let jsonMetadata: Record<string, unknown> | null = null;
+      // Simple format uses metadata.json
+      let metadata: Record<string, unknown> = {};
       try {
-        const metadataContent = await readFile(join(skillPath, "metadata.json"), "utf-8");
-        jsonMetadata = JSON.parse(metadataContent);
+        const content = await readFile(join(skillPath, "metadata.json"), "utf-8");
+        metadata = JSON.parse(content);
       } catch {
         // No metadata.json
       }
 
-      const name = metadata?.name ?? jsonMetadata?.name as string ?? entry.name;
-      const description = metadata?.description ??
-        (jsonMetadata?.abstract as string) ??
-        (jsonMetadata?.description as string);
+      const name = (metadata.name as string) ?? entry.name;
+      const description = (metadata.description as string) ?? (metadata.abstract as string);
 
       artifacts.push({
         name,
@@ -398,19 +447,18 @@ async function discoverSimpleFormat(repoPath: string): Promise<DiscoveryResult> 
         path: relative(repoPath, skillPath),
         absolutePath: skillPath,
         format: "simple",
-        metadata: { ...jsonMetadata, ...metadata } as Record<string, unknown>,
+        metadata,
       });
     }
   } catch {
     // skills/ directory doesn't exist or can't be read
   }
 
-  // Simple format has no collections
   return { artifacts, collections: [], format: "simple" };
 }
 
 /**
- * Parse SKILL.md or AGENTS.md YAML frontmatter.
+ * Parse Claude Code skill metadata from SKILL.md or AGENTS.md YAML frontmatter.
  */
 async function parseSkillMd(dirPath: string): Promise<SkillMetadata | null> {
   for (const filename of ["SKILL.md", "AGENTS.md"]) {

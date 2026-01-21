@@ -41,6 +41,7 @@ export {
   type DiscoveredArtifact,
   type DiscoveredCollection,
   type DiscoveryResult,
+  type PluginEntry,
   type ClaudeMarketplaceManifest,
   type ClaudePluginManifest,
   type SkillMetadata,
