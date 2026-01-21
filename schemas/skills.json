@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://skills.sh/schemas/skills.json",
+  "title": "Skills Configuration",
+  "description": "Configuration file for managing agent skills",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "marketplaces": {
+      "type": "array",
+      "description": "Registered skill marketplaces (repos containing multiple skills)",
+      "items": {
+        "$ref": "#/definitions/marketplace"
+      }
+    },
+    "skills": {
+      "type": "array",
+      "description": "Individual skills to install",
+      "items": {
+        "$ref": "#/definitions/skill"
+      }
+    }
+  },
+  "definitions": {
+    "marketplace": {
+      "type": "object",
+      "required": ["name", "source"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name for this marketplace (e.g., 'anthropic', 'vercel')",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "source": {
+          "type": "string",
+          "description": "Git source (owner/repo or full URL)",
+          "examples": ["anthropics/skills", "vercel-labs/agent-skills"]
+        },
+        "ref": {
+          "type": "string",
+          "description": "Pin to specific git ref (branch or tag)"
+        },
+        "enabled": {
+          "type": "array",
+          "description": "Skills enabled from this marketplace",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "skill": {
+      "type": "object",
+      "required": ["name", "source"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Skill name"
+        },
+        "source": {
+          "type": "string",
+          "description": "Git source (owner/repo, full URL, or marketplace:skill-name)"
+        },
+        "ref": {
+          "type": "string",
+          "description": "Pin to specific git ref (branch or tag)"
+        },
+        "path": {
+          "type": "string",
+          "description": "Subpath within repo if skill is nested"
+        }
+      }
+    }
+  }
+}

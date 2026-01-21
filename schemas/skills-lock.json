@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://skills.sh/schemas/skills-lock.json",
+  "title": "Skills Lock File",
+  "description": "Lock file with resolved git SHAs for reproducible skill installation",
+  "type": "object",
+  "required": ["version"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "integer",
+      "description": "Lock file format version",
+      "minimum": 1
+    },
+    "marketplaces": {
+      "type": "object",
+      "description": "Locked marketplace states",
+      "additionalProperties": {
+        "$ref": "#/definitions/lockedMarketplace"
+      }
+    },
+    "skills": {
+      "type": "object",
+      "description": "Locked skill states",
+      "additionalProperties": {
+        "$ref": "#/definitions/lockedSkill"
+      }
+    }
+  },
+  "definitions": {
+    "lockedMarketplace": {
+      "type": "object",
+      "required": ["source", "sha"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Git source URL"
+        },
+        "sha": {
+          "type": "string",
+          "description": "Resolved git commit SHA",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "available_skills": {
+          "type": "array",
+          "description": "Skills discovered in this marketplace",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "lockedSkill": {
+      "type": "object",
+      "required": ["name", "source", "sha", "path"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Skill name"
+        },
+        "source": {
+          "type": "string",
+          "description": "Git source URL"
+        },
+        "sha": {
+          "type": "string",
+          "description": "Resolved git commit SHA",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "path": {
+          "type": "string",
+          "description": "Path within repo to skill directory"
+        },
+        "description": {
+          "type": "string",
+          "description": "Skill description from SKILL.md frontmatter"
+        },
+        "marketplace": {
+          "type": "string",
+          "description": "Marketplace this skill came from (if any)"
+        }
+      }
+    }
+  }
+}
