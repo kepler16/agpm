@@ -72,20 +72,24 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     ),
     // Code - inline code and code blocks
     code: ({ className, children, ...props }) => {
-      // Check if this is inside a pre (code block) vs inline code
-      const isInPre = className?.includes("language-");
-      if (isInPre) {
-        // Extract text content from children (handles React elements)
-        const getTextContent = (node: React.ReactNode): string => {
-          if (typeof node === "string") return node;
-          if (typeof node === "number") return String(node);
-          if (Array.isArray(node)) return node.map(getTextContent).join("");
-          if (node && typeof node === "object" && "props" in node) {
-            return getTextContent((node as React.ReactElement).props.children);
-          }
-          return "";
-        };
-        const codeString = getTextContent(children);
+      // Extract text content from children (handles React elements)
+      const getTextContent = (node: React.ReactNode): string => {
+        if (typeof node === "string") return node;
+        if (typeof node === "number") return String(node);
+        if (Array.isArray(node)) return node.map(getTextContent).join("");
+        if (node && typeof node === "object" && "props" in node) {
+          return getTextContent((node as React.ReactElement).props.children);
+        }
+        return "";
+      };
+
+      const codeString = getTextContent(children);
+
+      // Code blocks have multi-line content or language class
+      const isCodeBlock =
+        className?.includes("language-") || codeString.includes("\n");
+
+      if (isCodeBlock) {
         const html = highlight(codeString);
         return (
           <code
@@ -95,6 +99,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
           />
         );
       }
+
+      // Inline code
       return (
         <code
           className={cn(
@@ -111,9 +117,10 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     pre: ({ className, ...props }) => (
       <pre
         className={cn(
-          "mb-4 mt-6 overflow-x-auto rounded-lg border bg-zinc-950 px-4 py-4 dark:bg-zinc-900 text-zinc-100",
+          "mb-4 mt-6 overflow-x-auto rounded-lg border bg-zinc-950 px-4 py-4 dark:bg-zinc-900",
           className
         )}
+        style={{ color: "#c9d1d9" }}
         {...props}
       />
     ),

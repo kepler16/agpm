@@ -124,40 +124,21 @@
   }
 }
 
-/* Sugar-high syntax highlighting */
+/* Sugar-high syntax highlighting - CSS custom properties */
+:root {
+  --sh-identifier: #c9d1d9;
+  --sh-keyword: #ff7b72;
+  --sh-string: #a5d6ff;
+  --sh-class: #ffa657;
+  --sh-property: #79c0ff;
+  --sh-entity: #d2a8ff;
+  --sh-jsxliterals: #c9d1d9;
+  --sh-sign: #8b949e;
+  --sh-comment: #6e7681;
+  --sh-break: #c9d1d9;
+  --sh-space: inherit;
+}
+
 .sh__line {
   display: block;
-}
-.sh__token--identifier {
-  color: #c9d1d9;
-}
-.sh__token--keyword {
-  color: #ff7b72;
-}
-.sh__token--string {
-  color: #a5d6ff;
-}
-.sh__token--class {
-  color: #ffa657;
-}
-.sh__token--property {
-  color: #79c0ff;
-}
-.sh__token--entity {
-  color: #d2a8ff;
-}
-.sh__token--jsxliterals {
-  color: #c9d1d9;
-}
-.sh__token--sign {
-  color: #8b949e;
-}
-.sh__token--comment {
-  color: #8b949e;
-}
-.sh__token--break {
-  color: #c9d1d9;
-}
-.sh__token--space {
-  color: #c9d1d9;
 }
