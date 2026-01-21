@@ -124,21 +124,19 @@
   }
 }
 
-/* Sugar-high syntax highlighting - CSS custom properties */
-:root {
-  --sh-identifier: #c9d1d9;
-  --sh-keyword: #ff7b72;
-  --sh-string: #a5d6ff;
-  --sh-class: #ffa657;
-  --sh-property: #79c0ff;
-  --sh-entity: #d2a8ff;
-  --sh-jsxliterals: #c9d1d9;
-  --sh-sign: #8b949e;
-  --sh-comment: #6e7681;
-  --sh-break: #c9d1d9;
-  --sh-space: inherit;
+/* Shiki code highlighting - ensure proper line display */
+pre code {
+  white-space: pre;
 }
 
-.sh__line {
+/* Shiki wraps each line in .line spans */
+pre code .line {
   display: block;
+  min-height: 1.5em;
+  line-height: 1.5;
+}
+
+/* Empty lines need content to maintain height */
+pre code .line:empty::before {
+  content: " ";
 }

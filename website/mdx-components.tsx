@@ -1,8 +1,9 @@
 import type { MDXComponents } from "mdx/types";
 import Link from "next/link";
+import { Suspense } from "react";
 import { cn } from "@/lib/utils";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@/components/docs/table";
-import { highlight } from "sugar-high";
+import { ShikiCode } from "@/components/docs/shiki-code";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
@@ -78,7 +79,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         if (typeof node === "number") return String(node);
         if (Array.isArray(node)) return node.map(getTextContent).join("");
         if (node && typeof node === "object" && "props" in node) {
-          return getTextContent((node as React.ReactElement).props.children);
+          const element = node as { props?: { children?: React.ReactNode } };
+          return getTextContent(element.props?.children);
         }
         return "";
       };
@@ -90,13 +92,24 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         className?.includes("language-") || codeString.includes("\n");
 
       if (isCodeBlock) {
-        const html = highlight(codeString);
+        // Extract language from className (e.g., "language-bash" -> "bash")
+        const langMatch = className?.match(/language-(\w+)/);
+        const language = langMatch?.[1] || "text";
+
         return (
-          <code
-            className={cn("font-mono text-sm", className)}
-            dangerouslySetInnerHTML={{ __html: html }}
-            {...props}
-          />
+          <Suspense
+            fallback={
+              <code className={cn("font-mono text-sm", className)} {...props}>
+                {children}
+              </code>
+            }
+          >
+            <ShikiCode
+              code={codeString}
+              language={language}
+              className={className}
+            />
+          </Suspense>
         );
       }
 

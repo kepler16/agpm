@@ -8,31 +8,46 @@ Install all configured artifacts to their target directories.
 agpm install
 ```
 
-Also available as:
-
-```bash
-agpm sync
-```
+Also available as `agpm sync`.
 
 ## What Happens
 
-1. Reads your `agpm.json` configuration
-2. Resolves artifact SHAs (uses lock file if present)
-3. Copies artifacts to all configured target directories
+1. Reads your `agpm.json` configuration and configured targets
+2. Resolves refs to SHAs (uses lock file if present)
+3. Caches repo at SHA to `~/.agpm/cache/<sha>/`
+4. Computes integrity hash (SHA256 of file contents)
+5. Copies artifacts to enabled target directories only
 
 ## Target Directories
 
-By default, artifacts are installed to:
+Artifacts are installed only to targets explicitly configured in `agpm.json`:
 
-- `.claude/skills/<name>/` - Claude Code
-- `.opencode/skills/<name>/` - OpenCode
-- `.codex/skills/<name>/` - Codex
-
-Custom targets can be configured in `agpm.json`.
+<Table>
+  <Thead>
+    <Tr>
+      <Th>Target</Th>
+      <Th>Skills Directory</Th>
+    </Tr>
+  </Thead>
+  <Tbody>
+    <Tr>
+      <Td>`claude-code`</Td>
+      <Td>`.claude/skills/<name>/`</Td>
+    </Tr>
+    <Tr>
+      <Td>`opencode`</Td>
+      <Td>`.opencode/skills/<name>/`</Td>
+    </Tr>
+    <Tr>
+      <Td>`codex`</Td>
+      <Td>`.codex/skills/<name>/`</Td>
+    </Tr>
+  </Tbody>
+</Table>
 
 ## Lock File
 
-When a `agpm-lock.json` exists, install uses the pinned SHAs for reproducible installs. This ensures all team members get the exact same artifact versions.
+When `agpm-lock.json` exists, install uses the pinned SHAs for reproducible installs. This ensures all team members get the exact same artifact versions.
 
 ## Examples
 

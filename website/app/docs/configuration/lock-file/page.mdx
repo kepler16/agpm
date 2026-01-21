@@ -35,6 +35,7 @@ An object mapping artifact references to their resolved details.
       "sha": "69c0b1a0674149f27b61b2635f935524b6add202",
       "integrity": "sha256-abc123...",
       "path": "skills/pdf",
+      "ref": "v1.0.0",
       "metadata": {
         "name": "pdf",
         "description": "PDF manipulation toolkit for AI assistants"
@@ -48,6 +49,7 @@ An object mapping artifact references to their resolved details.
 - `sha` - Git commit SHA (40 characters)
 - `integrity` - Content hash for verification (sha256-...)
 - `path` - Relative path within the repository
+- `ref` - Original version reference if artifact was pinned (e.g., `v1.0.0`, `main`)
 - `metadata` - Discovered artifact metadata
   - `name` - Artifact name
   - `description` - Artifact description

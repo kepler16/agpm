@@ -8,6 +8,8 @@ AGPM automatically discovers artifacts by scanning source repositories for speci
 
 ## Discovery Formats
 
+AGPM discovers artifacts in three formats:
+
 ### claude-marketplace
 
 Repositories with a `.claude-plugin/marketplace.json` file:
@@ -18,7 +20,7 @@ Repositories with a `.claude-plugin/marketplace.json` file:
     {
       "name": "plugin-name",
       "source": "./",
-      "description": "Plugin description"
+      "skills": ["./skills/pdf", "./skills/docx"]
     }
   ]
 }
@@ -26,32 +28,30 @@ Repositories with a `.claude-plugin/marketplace.json` file:
 
 Each plugin's `source` directory should contain a `skills/` subdirectory with individual skills.
 
+### claude-plugin
+
+Repositories with a `.claude-plugin/plugin.json` file:
+
+```json
+{
+  "name": "plugin-name",
+  "skills": "./custom/skills/"
+}
+```
+
+This format allows specifying a custom skills directory path.
+
 ### simple
 
-Repositories with a top-level `skills/` directory containing skill subdirectories, each with a `SKILL.md` file:
+Repositories with a top-level `skills/` directory containing skill subdirectories with `metadata.json`:
 
-```
+```text
 repo/
 └── skills/
     ├── pdf/
-    │   └── SKILL.md
+    │   └── metadata.json
     └── web-search/
-        └── SKILL.md
-```
-
-## SKILL.md Format
-
-Each skill has a `SKILL.md` file with YAML frontmatter:
-
-```markdown
----
-name: pdf
-description: PDF manipulation toolkit for reading and extracting content
----
-
-# PDF Skill
-
-Instructions for using this skill...
+        └── metadata.json
 ```
 
 ## Discovery Process
@@ -60,9 +60,10 @@ When you run `agpm source discover` or `agpm add`:
 
 1. Repository is cloned to `~/.agpm/repos/`
 2. AGPM checks for `.claude-plugin/marketplace.json`
-3. If not found, checks for `skills/` directory
-4. Scans for `SKILL.md` files
-5. Parses metadata from frontmatter
+3. If not found, checks for `.claude-plugin/plugin.json`
+4. If not found, checks for `skills/` directory
+5. Scans for metadata files
+6. Parses artifact metadata
 
 ## See Also
 

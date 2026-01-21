@@ -41,9 +41,11 @@ agpm update anthropics/skills/pdf
 
 ## What Happens
 
-1. Fetches the latest commit SHA for each artifact
+1. Fetches latest SHAs for each ref (tag/branch/HEAD)
 2. Updates `agpm-lock.json` with new SHAs
 3. Recalculates integrity hashes
+
+For artifacts pinned to a branch (e.g., `pdf@main`), update resolves to the latest commit on that branch. For artifacts pinned to a tag or SHA, the SHA doesn't change.
 
 ## Important
 

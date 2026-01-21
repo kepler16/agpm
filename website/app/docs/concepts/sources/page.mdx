@@ -101,9 +101,19 @@ The `format` property controls how AGPM discovers artifacts:
 - `claude-plugin` - Looks for `.claude-plugin/plugin.json`
 - `simple` - Looks for `skills/` directory with `SKILL.md` files
 
-## Local Cache
+## Storage Model
 
-Sources are cloned to `~/.agpm/repos/`. AGPM fetches updates when needed but caches repositories to speed up operations.
+AGPM uses two directories for caching:
+
+```text
+~/.agpm/
+├── repos/github.com/owner/repo/    # Full git repos (for fetching)
+└── cache/<sha>/                     # Immutable snapshots at specific SHAs
+    └── <full repo contents>
+```
+
+- **repos/** - Full git repositories, used for fetching and discovering artifacts
+- **cache/** - Immutable snapshots at specific commits, used for reproducible installs
 
 ## Managing Sources
 

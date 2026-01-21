@@ -5,7 +5,7 @@ Add an artifact to your project from a source repository.
 ## Usage
 
 ```bash
-agpm add <source> [artifact]
+agpm add <source> [artifact[@version]]
 ```
 
 ## Arguments
@@ -24,7 +24,7 @@ agpm add <source> [artifact]
     </Tr>
     <Tr>
       <Td>`artifact`</Td>
-      <Td>Optional name of specific artifact to add</Td>
+      <Td>Name of specific artifact to add, optionally with version</Td>
     </Tr>
   </Tbody>
 </Table>
@@ -37,12 +37,30 @@ The `<source>` argument accepts multiple formats:
 - `owner/repo#subpath` - With subpath for monorepos
 - `https://github.com/owner/repo` - Full URL
 
+## Version Pinning
+
+Artifacts can be pinned to specific versions using `@ref` syntax:
+
+```bash
+agpm add anthropics/skills pdf@v1.0.0    # Pin to tag
+agpm add anthropics/skills pdf@main       # Pin to branch
+agpm add anthropics/skills pdf@abc123     # Pin to SHA
+```
+
+Without a version, artifacts track HEAD and update to the latest commit when you run `agpm update`.
+
 ## Examples
 
 Add a specific skill from a repository:
 
 ```bash
 agpm add anthropics/skills pdf
+```
+
+Add with a version pin:
+
+```bash
+agpm add anthropics/skills pdf@v1.0.0
 ```
 
 Add from a repository with a subpath:
@@ -62,5 +80,6 @@ After adding, run `agpm install` to install the artifact to your target director
 ## See Also
 
 - [install](/docs/commands/install) - Install added artifacts
+- [update](/docs/commands/update) - Update artifacts to latest versions
 - [Sources](/docs/concepts/sources) - Learn about source formats
 - [Discovery](/docs/concepts/discovery) - How artifacts are discovered

@@ -22,20 +22,25 @@ The main configuration file that defines your targets, sources, and artifacts.
 
 #### targets
 
-An object defining which AI tools to install artifacts to. Each key is a target name, and the value contains target-specific options.
+An object defining which AI tools to install artifacts to. Only targets explicitly listed will receive artifacts.
+
+Target values can be:
+- `true` - Enable target (simplified form)
+- `{}` - Enable target (allows future options)
+- `false` - Disable target
 
 ```json
 {
   "targets": {
-    "claude": {},
-    "opencode": {},
-    "codex": {}
+    "claude-code": true,
+    "opencode": true,
+    "codex": true
   }
 }
 ```
 
 **Supported targets:**
-- `claude` - Installs to `.claude/skills/`
+- `claude-code` - Installs to `.claude/skills/`
 - `opencode` - Installs to `.opencode/skills/`
 - `codex` - Installs to `.codex/skills/`
 
@@ -77,13 +82,14 @@ An array of collection references that expand to multiple artifacts at install t
 
 #### artifacts
 
-An array of individual artifact references to install.
+An array of individual artifact references to install. Version pinning is supported using `@ref` syntax.
 
 ```json
 {
   "artifacts": [
     "anthropics/skills/pdf",
-    "anthropics/skills/pdf@1.0.0"
+    "anthropics/skills/docx@v1.0.0",
+    "anthropics/skills/web-search@main"
   ]
 }
 ```
@@ -94,8 +100,8 @@ An array of individual artifact references to install.
 {
   "$schema": "https://agpm.dev/schemas/agpm.json",
   "targets": {
-    "claude": {},
-    "opencode": {}
+    "claude-code": true,
+    "opencode": true
   },
   "sources": [
     {
@@ -113,7 +119,7 @@ An array of individual artifact references to install.
   ],
   "artifacts": [
     "anthropics/skills/pdf",
-    "my-company/internal-skills/custom-tool"
+    "my-company/internal-skills/custom-tool@main"
   ]
 }
 ```

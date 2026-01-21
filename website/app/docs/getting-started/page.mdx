@@ -1,6 +1,6 @@
 # Getting Started
 
-AGPM (Agent Package Manager) is a universal package manager for AI coding tool artifacts. It helps you manage skills, commands, and hooks across Claude, OpenCode, Codex, and other AI tools.
+AGPM (Agent Package Manager) is a universal package manager for AI coding tool artifacts. It helps you manage skills, commands, and hooks across Claude Code, OpenCode, Codex, and other AI tools.
 
 ## Installation
 
@@ -27,7 +27,7 @@ Create an `agpm.json` file in your project root:
 {
   "$schema": "https://agpm.dev/schemas/agpm.json",
   "targets": {
-    "claude": {}
+    "claude-code": true
   },
   "sources": [],
   "artifacts": []
@@ -70,7 +70,7 @@ Install all configured artifacts to your target directories:
 agpm install
 ```
 
-Artifacts are copied to the appropriate directories for each target (e.g., `.claude/skills/` for Claude).
+Artifacts are copied to the appropriate directories for each configured target (e.g., `.claude/skills/` for Claude Code).
 
 ## What's Next?
 

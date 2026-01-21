@@ -13,16 +13,12 @@ AGPM provides a set of commands for managing AI tool artifacts. Here's an overvi
   </Thead>
   <Tbody>
     <Tr>
-      <Td>`agpm add <source> [artifact]`</Td>
+      <Td>`agpm add <source> [artifact[@version]]`</Td>
       <Td>Add an artifact to your project</Td>
     </Tr>
     <Tr>
       <Td>`agpm install`</Td>
       <Td>Install all configured artifacts</Td>
-    </Tr>
-    <Tr>
-      <Td>`agpm sync`</Td>
-      <Td>Alias for `install`</Td>
     </Tr>
     <Tr>
       <Td>`agpm list`</Td>
@@ -78,8 +74,8 @@ Add an artifact to your project configuration.
 # Add from a source
 agpm add anthropics/skills pdf
 
-# Add with version
-agpm add anthropics/skills pdf@1.0.0
+# Add with version pin
+agpm add anthropics/skills pdf@v1.0.0
 ```
 
 ### agpm install
@@ -91,9 +87,10 @@ agpm install
 ```
 
 This command:
-1. Reads your `agpm.json` configuration
-2. Resolves artifact versions (creates/updates `agpm-lock.json`)
-3. Copies artifacts to target directories (`.claude/skills/`, `.opencode/skills/`, etc.)
+1. Reads your `agpm.json` configuration and configured targets
+2. Resolves refs to SHAs (creates/updates `agpm-lock.json`)
+3. Caches repo at SHA to `~/.agpm/cache/<sha>/`
+4. Copies artifacts to enabled target directories (e.g., `.claude/skills/`)
 
 ### agpm list
 
