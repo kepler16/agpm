@@ -1,5 +1,8 @@
 # AGPM - Agent Package Manager
 
+> [!WARNING]
+> This project is in early alpha. APIs and configuration formats may change without notice. Use at your own risk.
+
 Universal package manager for AI coding tool artifacts (skills, commands, hooks). Manages artifacts from git repos and installs them to multiple AI tool targets.
 
 ## Installation
