@@ -1,0 +1,21 @@
+{
+  "$schema": "https://agpm.dev/schemas/agpm.json",
+  "targets": {
+    "claude-code": true
+  },
+  "sources": [
+    {
+      "name": "kepler16/agpm",
+      "url": "https://github.com/kepler16/agpm.git"
+    },
+    {
+      "name": "vercel-labs/agent-skills",
+      "url": "https://github.com/vercel-labs/agent-skills.git"
+    }
+  ],
+  "collections": [],
+  "artifacts": [
+    "kepler16/agpm/agpm-usage",
+    "vercel-labs/agent-skills/react-best-practices"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://agpm.dev/schemas/agpm-lock.json",
+  "version": 1,
+  "artifacts": {
+    "kepler16/agpm/agpm-usage": {
+      "sha": "befb6ab18af6ced12414b0d4663e1a8a12baebed",
+      "integrity": "sha256-e+H8Vzb1Gk42icZ4EtHJHJVFn9KIPYAqHL0cXKpxTxI=",
+      "path": "skills/agpm-usage",
+      "metadata": {
+        "name": "agpm-usage",
+        "description": "How to use AGPM (Agent Package Manager) to install and manage AI coding tool artifacts like skills, commands, and hooks. Use this skill when the user wants to install skills, manage artifact sources, or configure AGPM in their project."
+      }
+    },
+    "vercel-labs/agent-skills/react-best-practices": {
+      "sha": "cf9a8a624718607352f29338da830d2844fa879e",
+      "integrity": "sha256-su+Bq8NCwcjG2SzS5cqCUI0Lcy3GOnQ0wTS3g+Vcs8U=",
+      "path": "skills/react-best-practices",
+      "metadata": {
+        "name": "react-best-practices",
+        "description": "Comprehensive performance optimization guide for React and Next.js applications, designed for AI agents and LLMs. Contains 40+ rules across 8 categories, prioritized by impact from critical (eliminating waterfalls, reducing bundle size) to incremental (advanced patterns). Each rule includes detailed explanations, real-world examples comparing incorrect vs. correct implementations, and specific impact metrics to guide automated refactoring and code generation."
+      }
+    }
+  }
+}
