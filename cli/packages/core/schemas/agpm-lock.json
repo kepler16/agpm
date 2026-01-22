@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agpm.dev/schemas/agpm-lock.json",
+  "title": "AGPM Lock File",
+  "description": "Lock file for reproducible artifact installations",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "integer",
+      "description": "Lock file format version",
+      "const": 1
+    },
+    "artifacts": {
+      "type": "object",
+      "description": "Locked artifact resolutions",
+      "additionalProperties": {
+        "type": "object",
+        "description": "Resolved artifact details",
+        "properties": {
+          "sha": {
+            "type": "string",
+            "description": "Git commit SHA (40 characters)",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "integrity": {
+            "type": "string",
+            "description": "Content integrity hash (sha256-...)",
+            "pattern": "^sha256-[A-Za-z0-9+/=]+$"
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative path within the repository"
+          },
+          "ref": {
+            "type": "string",
+            "description": "Original version ref (tag, branch, or SHA) if specified"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Discovered artifact metadata",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Artifact name"
+              },
+              "description": {
+                "type": "string",
+                "description": "Artifact description"
+              }
+            },
+            "required": ["name"],
+            "additionalProperties": true
+          }
+        },
+        "required": ["sha", "integrity", "path", "metadata"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["version", "artifacts"],
+  "additionalProperties": false
+}

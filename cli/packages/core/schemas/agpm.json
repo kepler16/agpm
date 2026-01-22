@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agpm.dev/schemas/agpm.json",
+  "title": "AGPM Configuration",
+  "description": "Configuration file for the Agent Package Manager",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "targets": {
+      "type": "object",
+      "description": "AI tools to install artifacts to. Only install to targets that are listed.",
+      "propertyNames": {
+        "enum": ["claude-code", "opencode", "codex"]
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "boolean",
+            "description": "Enable (true) or disable (false) this target"
+          },
+          {
+            "type": "object",
+            "description": "Target-specific configuration options (currently empty)",
+            "additionalProperties": false
+          }
+        ]
+      },
+      "examples": [
+        {
+          "claude-code": true,
+          "opencode": true
+        },
+        {
+          "claude-code": {},
+          "opencode": {}
+        }
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "description": "Git repositories or local paths containing artifacts",
+      "items": {
+        "type": "object",
+        "description": "Source configuration",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Display name for the source (e.g., 'anthropics/skills')"
+          },
+          "url": {
+            "type": "string",
+            "description": "Full git URL for cloning"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["auto", "claude-marketplace", "claude-plugin", "simple"],
+            "description": "Format for artifact discovery. Defaults to 'auto' if omitted."
+          },
+          "subdir": {
+            "type": "string",
+            "description": "Subdirectory within the repo to use as root"
+          }
+        },
+        "required": ["name", "url"],
+        "additionalProperties": false
+      }
+    },
+    "collections": {
+      "type": "array",
+      "description": "Collection references (expand to their artifacts at install time)",
+      "items": {
+        "type": "string",
+        "description": "Collection reference in format: source/collection-name",
+        "examples": [
+          "anthropics/skills/office-suite",
+          "my-org/plugins/productivity"
+        ]
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "description": "Individual artifact references to install",
+      "items": {
+        "type": "string",
+        "description": "Artifact reference in format: source/name[@version]",
+        "examples": [
+          "anthropics/skills/pdf",
+          "anthropics/skills/pdf@1.0.0",
+          "anthropics/skills#experimental/new-skill@latest"
+        ]
+      }
+    }
+  },
+  "required": ["targets", "sources", "artifacts"],
+  "additionalProperties": false
+}

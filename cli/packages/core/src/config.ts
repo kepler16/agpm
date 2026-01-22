@@ -143,29 +143,32 @@ const LOCK_FILE = "agpm-lock.json";
 
 export async function loadConfig(dir: string): Promise<AgpmConfig> {
   const path = join(dir, CONFIG_FILE);
+
+  // Read the config file
+  let content: string;
   try {
-    const content = await readFile(path, "utf-8");
-    const config = JSON.parse(content) as AgpmConfig;
-
-    // Validate against schema
-    const result = await validateConfig(config);
-    if (!result.valid) {
-      throw new Error(
-        `Invalid ${CONFIG_FILE}:\n${formatValidationErrors(result.errors)}`
-      );
-    }
-
-    // Provide defaults for optional fields
-    return {
-      ...config,
-      collections: config.collections ?? [],
-    };
+    content = await readFile(path, "utf-8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { ...DEFAULT_CONFIG };
     }
     throw error;
   }
+
+  // Parse and validate (errors here should propagate, not return defaults)
+  const config = JSON.parse(content) as AgpmConfig;
+  const result = await validateConfig(config);
+  if (!result.valid) {
+    throw new Error(
+      `Invalid ${CONFIG_FILE}:\n${formatValidationErrors(result.errors)}`
+    );
+  }
+
+  // Provide defaults for optional fields
+  return {
+    ...config,
+    collections: config.collections ?? [],
+  };
 }
 
 export async function saveConfig(dir: string, config: AgpmConfig): Promise<void> {
@@ -178,25 +181,28 @@ export async function saveConfig(dir: string, config: AgpmConfig): Promise<void>
 
 export async function loadLock(dir: string): Promise<AgpmLock> {
   const path = join(dir, LOCK_FILE);
+
+  // Read the lock file
+  let content: string;
   try {
-    const content = await readFile(path, "utf-8");
-    const lock = JSON.parse(content) as AgpmLock;
-
-    // Validate against schema
-    const result = await validateLock(lock);
-    if (!result.valid) {
-      throw new Error(
-        `Invalid ${LOCK_FILE}:\n${formatValidationErrors(result.errors)}`
-      );
-    }
-
-    return lock;
+    content = await readFile(path, "utf-8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { ...DEFAULT_LOCK };
     }
     throw error;
   }
+
+  // Parse and validate (errors here should propagate, not return defaults)
+  const lock = JSON.parse(content) as AgpmLock;
+  const result = await validateLock(lock);
+  if (!result.valid) {
+    throw new Error(
+      `Invalid ${LOCK_FILE}:\n${formatValidationErrors(result.errors)}`
+    );
+  }
+
+  return lock;
 }
 
 export async function saveLock(dir: string, lock: AgpmLock): Promise<void> {

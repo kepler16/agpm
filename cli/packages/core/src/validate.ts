@@ -3,9 +3,9 @@ import { readFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Get the schemas directory path
+// Get the schemas directory path (schemas are bundled with the package)
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SCHEMAS_DIR = join(__dirname, "../../../schemas");
+const SCHEMAS_DIR = join(__dirname, "../schemas");
 
 // Create Ajv instance
 const ajv = new Ajv.default({
