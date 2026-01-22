@@ -4,7 +4,7 @@
   "artifacts": {
     "anthropics/skills/xlsx": {
       "sha": "69c0b1a0674149f27b61b2635f935524b6add202",
-      "integrity": "sha256-69c0b1a0674149f2",
+      "integrity": "sha256-kf7g1RmXXKOHx68feka0kS10sgfGcC4B+rgcBZv5sbM=",
       "path": "skills/xlsx",
       "metadata": {
         "name": "xlsx",
@@ -13,7 +13,7 @@
     },
     "anthropics/skills/docx": {
       "sha": "69c0b1a0674149f27b61b2635f935524b6add202",
-      "integrity": "sha256-69c0b1a0674149f2",
+      "integrity": "sha256-4LmY13DiDP41FNN/7uxAifQI8pwnarMPLsrpNhj+fpU=",
       "path": "skills/docx",
       "metadata": {
         "name": "docx",
@@ -22,7 +22,7 @@
     },
     "anthropics/skills/pptx": {
       "sha": "69c0b1a0674149f27b61b2635f935524b6add202",
-      "integrity": "sha256-69c0b1a0674149f2",
+      "integrity": "sha256-9mFDTfVbBakRe0QY6wgU8jEORccHcfa/487xBYvZWN0=",
       "path": "skills/pptx",
       "metadata": {
         "name": "pptx",
@@ -31,7 +31,7 @@
     },
     "anthropics/skills/pdf": {
       "sha": "69c0b1a0674149f27b61b2635f935524b6add202",
-      "integrity": "sha256-69c0b1a0674149f2",
+      "integrity": "sha256-Wu/6igdMZY2jlV7XESCt6/VyMFuXcXiz9F8z7URlZk8=",
       "path": "skills/pdf",
       "metadata": {
         "name": "pdf",

@@ -1,0 +1,19 @@
+{
+  "name": "agpm",
+  "owner": {
+    "name": "K42",
+    "email": "support@agpm.dev"
+  },
+  "metadata": {
+    "description": "Official AGPM (Agent Package Manager) plugins",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "agpm",
+      "description": "Skills for working with AGPM - the universal package manager for AI coding tool artifacts",
+      "source": "./",
+      "skills": ["./skills/agpm-usage"]
+    }
+  ]
+}

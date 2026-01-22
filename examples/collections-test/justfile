@@ -9,7 +9,7 @@ clean:
 # Demo: Add and install the document-skills collection
 demo:
     @just clean
-    @echo '{"$schema":"https://agpm.dev/schemas/agpm.json","targets":{},"sources":[],"artifacts":[]}' > agpm.json
+    @echo '{"$schema":"https://agpm.dev/schemas/agpm.json","targets":{"claude-code": true},"sources":[],"artifacts":[]}' > agpm.json
     @just agpm add anthropics/skills document-skills
     @just agpm install
     @just agpm list

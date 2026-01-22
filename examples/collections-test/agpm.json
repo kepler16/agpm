@@ -1,6 +1,8 @@
 {
   "$schema": "https://agpm.dev/schemas/agpm.json",
-  "targets": {},
+  "targets": {
+    "claude-code": true
+  },
   "sources": [
     {
       "name": "anthropics/skills",
